@@ -1,7 +1,11 @@
 using ArTraV2.Core.Chart;
+using ArTraV2.Core.Chart.Drawing;
 using ArTraV2.Core.DataProviders;
+using ArTraV2.Core.Indicators;
 using ArTraV2.Core.Interfaces;
 using ArTraV2.Core.Models;
+using ArTraV2.App.Controls;
+using ArTraV2.App.Dialogs;
 
 namespace ArTraV2.App;
 
@@ -36,7 +40,12 @@ public partial class MainForm : Form
     // Murad-bot controls
     private readonly TextBox _txtBotUrl = new();
     private readonly Button _btnBotConnect = new();
+    private readonly Button _btnIndicators = new();
     private Label _lblBotInfo = new();
+
+    // Drawing & indicators
+    private readonly DrawingManager _drawingManager = new();
+    private readonly DrawingToolbar _drawingToolbar = new();
 
     private IDataProvider? _currentProvider;
     private ILiveDataProvider? _liveProvider;
@@ -138,8 +147,17 @@ public partial class MainForm : Form
         _btnBotConnect.ForeColor = Color.White;
         _btnBotConnect.Click += async (s, e) => await ConnectToBot();
 
+        // Indicators button
+        _btnIndicators.Text = "Indicators";
+        _btnIndicators.Width = 80;
+        _btnIndicators.Location = new Point(810, 7);
+        _btnIndicators.FlatStyle = FlatStyle.Flat;
+        _btnIndicators.BackColor = Color.FromArgb(42, 46, 57);
+        _btnIndicators.ForeColor = Color.White;
+        _btnIndicators.Click += (s, e) => OpenIndicatorSelector();
+
         toolbar.Controls.AddRange([_cmbDataSource, _txtSymbol, _cmbCycle, _btnLoad,
-            _cmbRenderType, lblBot, _txtBotUrl, _btnBotConnect]);
+            _cmbRenderType, lblBot, _txtBotUrl, _btnBotConnect, _btnIndicators]);
 
         // Bot info panel
         _lblBotInfo = new Label
@@ -153,11 +171,23 @@ public partial class MainForm : Form
             Visible = false
         };
 
+        // Drawing toolbar (left side)
+        _drawingToolbar.ToolSelected += tool =>
+        {
+            _drawingManager.CancelCreation();
+            _drawingManager.ActiveTool = tool;
+            _drawingManager.SelectedObject = null;
+            _chartPanel.Cursor = tool.HasValue ? Cursors.Cross : Cursors.Default;
+            _chartPanel.Invalidate();
+        };
+
         // Chart panel
         _chartPanel.Dock = DockStyle.Fill;
         _chartPanel.BackColor = Color.FromArgb(19, 23, 34);
         _chartPanel.Paint += ChartPanel_Paint;
+        _chartPanel.MouseDown += ChartPanel_MouseDown;
         _chartPanel.MouseMove += ChartPanel_MouseMove;
+        _chartPanel.MouseUp += ChartPanel_MouseUp;
         _chartPanel.MouseLeave += (s, e) => { _chart.CursorPosition = null; _chartPanel.Invalidate(); };
         _chartPanel.MouseWheel += ChartPanel_MouseWheel;
         _chartPanel.Resize += (s, e) => _chartPanel.Invalidate();
@@ -181,6 +211,7 @@ public partial class MainForm : Form
         _statusStrip.Items.AddRange([_lblStatus, _lblLive, _lblBotStatus, _lblPrice]);
 
         Controls.Add(_chartPanel);
+        Controls.Add(_drawingToolbar);
         Controls.Add(_lblBotInfo);
         Controls.Add(toolbar);
         Controls.Add(_statusStrip);
@@ -193,12 +224,50 @@ public partial class MainForm : Form
     private void ChartPanel_Paint(object? sender, PaintEventArgs e)
     {
         _chart.Render(e.Graphics, _chartPanel.ClientRectangle);
+
+        // Render drawing objects on top
+        if (_chart.Data.Count > 0 && _chart.Layout.Panes.Count > 0)
+        {
+            _drawingManager.RenderAll(e.Graphics, AnchorToScreen);
+        }
+    }
+
+    private void ChartPanel_MouseDown(object? sender, MouseEventArgs e)
+    {
+        if (e.Button != MouseButtons.Left || _chart.Data.Count == 0) return;
+
+        var barIndex = _chart.GetBarIndexAtX(_chartPanel.ClientRectangle, e.X);
+        var pane = _chart.GetPaneAt(e.Y) ?? _chart.Layout.MainPane;
+        var price = pane.YToPrice(e.Y);
+
+        var toolFinished = _drawingManager.OnMouseDown(e.Location, barIndex, price, AnchorToScreen);
+        if (toolFinished)
+        {
+            _drawingToolbar.ResetToCrosshair();
+            _chartPanel.Cursor = Cursors.Default;
+        }
+
+        _chartPanel.Invalidate();
     }
 
     private void ChartPanel_MouseMove(object? sender, MouseEventArgs e)
     {
         _chart.CursorPosition = e.Location;
+
+        if (_drawingManager.IsDragging && _chart.Data.Count > 0)
+        {
+            var barIndex = _chart.GetBarIndexAtX(_chartPanel.ClientRectangle, e.X);
+            var pane = _chart.GetPaneAt(e.Y) ?? _chart.Layout.MainPane;
+            var price = pane.YToPrice(e.Y);
+            _drawingManager.OnMouseMove(e.Location, barIndex, price);
+        }
+
         _chartPanel.Invalidate();
+    }
+
+    private void ChartPanel_MouseUp(object? sender, MouseEventArgs e)
+    {
+        _drawingManager.OnMouseUp();
     }
 
     private void ChartPanel_MouseWheel(object? sender, MouseEventArgs e)
@@ -212,10 +281,30 @@ public partial class MainForm : Form
         _chartPanel.Invalidate();
     }
 
+    private PointF AnchorToScreen(DrawingAnchor anchor)
+    {
+        var pane = _chart.Layout.MainPane;
+        var visibleIdx = anchor.BarIndex - _chart.StartIndex;
+        var barW = (float)pane.Bounds.Width / _chart.VisibleBars;
+        var x = pane.Bounds.Left + visibleIdx * barW + barW / 2;
+        var y = pane.PriceToY(anchor.Price);
+        return new PointF(x, y);
+    }
+
     private void MainForm_KeyDown(object? sender, KeyEventArgs e)
     {
         switch (e.KeyCode)
         {
+            case Keys.Delete:
+                _drawingManager.DeleteSelected();
+                _chartPanel.Invalidate();
+                break;
+            case Keys.Escape:
+                _drawingManager.CancelCreation();
+                _drawingToolbar.ResetToCrosshair();
+                _chartPanel.Cursor = Cursors.Default;
+                _chartPanel.Invalidate();
+                break;
             case Keys.Left:
                 _chart.ScrollLeft(e.Control ? 20 : 5);
                 _chartPanel.Invalidate();
@@ -244,6 +333,19 @@ public partial class MainForm : Form
                 _chart.ShowLatest();
                 _chartPanel.Invalidate();
                 break;
+        }
+    }
+
+    // --- Indicator Selector ---
+
+    private void OpenIndicatorSelector()
+    {
+        using var dlg = new IndicatorSelectorDialog();
+        dlg.LoadActiveIndicators(_chart.ActiveIndicators);
+        if (dlg.ShowDialog(this) == DialogResult.OK)
+        {
+            _chart.ActiveIndicators = dlg.ActiveIndicators;
+            _chartPanel.Invalidate();
         }
     }
 
