@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ArTraV2.App/ArTraV2.App.csproj" />
+    <Project Path="src/ArTraV2.Core/ArTraV2.Core.csproj" />
+  </Folder>
+</Solution>
