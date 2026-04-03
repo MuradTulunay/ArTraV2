@@ -255,19 +255,28 @@ public partial class MainForm : Form
         _lblStatus.Text = $"Loading {symbol}...";
         _btnLoad.Enabled = false;
 
+        // Clear previous chart immediately
+        StopLiveStream();
+        _chart.Data = [];
+        _chart.Symbol = symbol;
+        _chart.CursorPosition = null;
+        _chart.CursorBarIndex = null;
+        _lblPrice.Text = "";
+        _lblLive.Text = "";
+        _chartPanel.Invalidate();
+
         try
         {
-            // Disconnect previous live stream
-            StopLiveStream();
-
             if (_currentProvider is IDisposable d && _currentProvider != _botProvider)
                 d.Dispose();
             _currentProvider = null;
 
             var dataSource = _cmbDataSource.SelectedIndex;
 
-            if (dataSource == 2 && _botProvider != null)
+            if (dataSource == 2)
             {
+                // Murad Bot — always use MuradBotProvider, create if needed
+                _botProvider ??= new MuradBotProvider();
                 _currentProvider = _botProvider;
             }
             else
@@ -276,7 +285,6 @@ public partial class MainForm : Form
                 {
                     0 => new YahooFinanceProvider(),
                     1 => new BinanceProvider(),
-                    2 => new BinanceProvider(), // fallback if bot not connected
                     _ => new YahooFinanceProvider()
                 };
             }
@@ -290,7 +298,7 @@ public partial class MainForm : Form
 
             if (bars.Count == 0)
             {
-                _lblStatus.Text = "No data found";
+                _lblStatus.Text = $"No data found for {symbol}";
                 return;
             }
 
