@@ -1,0 +1,480 @@
+using ArTraV2.Core.Formula;
+
+
+
+namespace FML
+{
+	#region Formula Group TD Sequential Indicators
+	[System.Serializable]
+	public class TDSEQ_COMPLETE:FormulaBase
+	{
+		public TDSEQ_COMPLETE():base()
+		{
+		}
+	
+		public override FormulaPackage Run(IFormulaDataProvider DP)
+		{
+			this.DataProvider = DP;
+			FormulaData SETUP=TDSETUP(C); SETUP.Name="SETUP";
+			FormulaData COUNTDOWN=TDCOUNTDOWN(C,H,L,SETUP); COUNTDOWN.Name="COUNTDOWN";
+			FormulaData SIGNAL=IF(COUNTDOWN!=0,COUNTDOWN,SETUP); SIGNAL.Name="SIGNAL";
+			FormulaData SUPPORT=TDSUPPORT(H,L,SETUP); SUPPORT.Name="SUPPORT";
+			FormulaData RESISTANCE=TDRESISTANCE(H,L,SETUP); RESISTANCE.Name="RESISTANCE";
+			FormulaData PERFECTED=TDPERFECTED(H,L,SETUP); PERFECTED.Name="PERFECTED";
+			
+			return new FormulaPackage(new FormulaData[]{SETUP,COUNTDOWN,SIGNAL,SUPPORT,RESISTANCE,PERFECTED},"");
+		}
+	
+		public override string LongName
+		{
+			get{return "TD Sequential Complete System";}
+		}
+	
+		public override string Description
+		{
+			get{return "TD Sequential tam sistemi - Setup, Countdown, TDST çizgileri ve mükemmelleştirme";}
+		}
+		public override string OutputFields
+		{
+			get{return "SETUP,COUNTDOWN,SIGNAL,SUPPORT,RESISTANCE,PERFECTED";}
+		}
+	} //class TDSEQ_COMPLETE
+
+	[System.Serializable]
+	public class TDTRADING_ARROWS:FormulaBase
+	{
+		public double SENSITIVITY=0;
+		public double SHOW_PERFECT_ONLY=0;
+		public TDTRADING_ARROWS():base()
+		{
+			AddParam("SENSITIVITY","1","1","3","1","Sinyal hassasiyeti (1=Tüm, 2=Orta, 3=Sadece güçlü)",FormulaParamType.Double);
+			AddParam("SHOW_PERFECT_ONLY","0","0","1","1","Sadece mükemmel sinyalleri göster (0=Hayır, 1=Evet)",FormulaParamType.Double);
+		}
+	
+		public override FormulaPackage Run(IFormulaDataProvider DP)
+		{
+			this.DataProvider = DP;
+			FormulaData SETUP=TDSETUP(C); SETUP.Name="SETUP";
+			FormulaData COUNTDOWN=TDCOUNTDOWN(C,H,L,SETUP); COUNTDOWN.Name="COUNTDOWN";
+			FormulaData PERFECTED=TDPERFECTED(H,L,SETUP); PERFECTED.Name="PERFECTED";
+			FormulaData BASIC_BUY=SETUP==9 | COUNTDOWN==13; BASIC_BUY.Name="BASIC_BUY";
+			FormulaData BASIC_SELL=SETUP==-9 | COUNTDOWN==-13; BASIC_SELL.Name="BASIC_SELL";
+			FormulaData STRONG_BUY=BASIC_BUY & (COUNTDOWN==13 | (SETUP==9 & PERFECTED>0)); STRONG_BUY.Name="STRONG_BUY";
+			FormulaData STRONG_SELL=BASIC_SELL & (COUNTDOWN==-13 | (SETUP==-9 & PERFECTED<0)); STRONG_SELL.Name="STRONG_SELL";
+			FormulaData PERFECT_BUY=BASIC_BUY & PERFECTED>0; PERFECT_BUY.Name="PERFECT_BUY";
+			FormulaData PERFECT_SELL=BASIC_SELL & PERFECTED<0; PERFECT_SELL.Name="PERFECT_SELL";
+			FormulaData BUY_SIGNAL=IF(SHOW_PERFECT_ONLY==1,PERFECT_BUY,
+IF(SENSITIVITY==3,STRONG_BUY,
+IF(SENSITIVITY==2,STRONG_BUY | (BASIC_BUY & COUNTDOWN!=0),BASIC_BUY))); BUY_SIGNAL.Name="BUY_SIGNAL";
+			FormulaData SELL_SIGNAL=IF(SHOW_PERFECT_ONLY==1,PERFECT_SELL,
+IF(SENSITIVITY==3,STRONG_SELL,
+IF(SENSITIVITY==2,STRONG_SELL | (BASIC_SELL & COUNTDOWN!=0),BASIC_SELL))); SELL_SIGNAL.Name="SELL_SIGNAL";
+			FormulaData NONAME0=DRAWICON(SELL_SIGNAL , C ,"Sell.Gif");NONAME0.SetAttrs("Top");
+			FormulaData NONAME1=DRAWICON(BUY_SIGNAL , C ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+			
+			return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1},"");
+		}
+	
+		public override string LongName
+		{
+			get{return "TD Sequential Trading Arrows";}
+		}
+	
+		public override string Description
+		{
+			get{return "TD Sequential alım satım okları - Setup ve Countdown sinyalleri ile mükemmel konfigürasyon tespiti";}
+		}
+		public override string OutputFields
+		{
+			get{return "DRAWICON(SELL_SIGNAL , C ,\"Sell.Gif\"),DRAWICON(BUY_SIGNAL , C ,\"Buy.Gif\")";}
+		}
+	} //class TDTRADING_ARROWS
+
+	[System.Serializable]
+	public class TDTRADING_COMPLETE:FormulaBase
+	{
+		public double SENSITIVITY=0;
+		public double SHOW_PERFECT_ONLY=0;
+		public double SHOW_SUPPORT_RESISTANCE=0;
+		public TDTRADING_COMPLETE():base()
+		{
+			AddParam("SENSITIVITY","2","1","3","1","Sinyal hassasiyeti (1=Tüm, 2=Orta, 3=Sadece güçlü)",FormulaParamType.Double);
+			AddParam("SHOW_PERFECT_ONLY","0","0","1","1","Sadece mükemmel sinyalleri göster (0=Hayır, 1=Evet)",FormulaParamType.Double);
+			AddParam("SHOW_SUPPORT_RESISTANCE","1","0","1","1","Destek/Direnç çizgilerini göster (0=Hayır, 1=Evet)",FormulaParamType.Double);
+		}
+	
+		public override FormulaPackage Run(IFormulaDataProvider DP)
+		{
+			this.DataProvider = DP;
+			FormulaData SETUP=TDSETUP(C); SETUP.Name="SETUP";
+			FormulaData COUNTDOWN=TDCOUNTDOWN(C,H,L,SETUP); COUNTDOWN.Name="COUNTDOWN";
+			FormulaData PERFECTED=TDPERFECTED(H,L,SETUP); PERFECTED.Name="PERFECTED";
+			FormulaData SUPPORT_LINES=IF(SHOW_SUPPORT_RESISTANCE==1,TDSUPPORT(H,L,SETUP),0); SUPPORT_LINES.Name="SUPPORT_LINES";
+			FormulaData RESISTANCE_LINES=IF(SHOW_SUPPORT_RESISTANCE==1,TDRESISTANCE(H,L,SETUP),0); RESISTANCE_LINES.Name="RESISTANCE_LINES";
+			FormulaData BASIC_BUY=SETUP==9 | COUNTDOWN==13; BASIC_BUY.Name="BASIC_BUY";
+			FormulaData BASIC_SELL=SETUP==-9 | COUNTDOWN==-13; BASIC_SELL.Name="BASIC_SELL";
+			FormulaData STRONG_BUY=BASIC_BUY & (COUNTDOWN==13 | (SETUP==9 & PERFECTED>0)); STRONG_BUY.Name="STRONG_BUY";
+			FormulaData STRONG_SELL=BASIC_SELL & (COUNTDOWN==-13 | (SETUP==-9 & PERFECTED<0)); STRONG_SELL.Name="STRONG_SELL";
+			FormulaData PERFECT_BUY=BASIC_BUY & PERFECTED>0; PERFECT_BUY.Name="PERFECT_BUY";
+			FormulaData PERFECT_SELL=BASIC_SELL & PERFECTED<0; PERFECT_SELL.Name="PERFECT_SELL";
+			FormulaData BUY_SIGNAL=IF(SHOW_PERFECT_ONLY==1,PERFECT_BUY,
+            IF(SENSITIVITY==3,STRONG_BUY,
+            IF(SENSITIVITY==2,STRONG_BUY | (BASIC_BUY & COUNTDOWN!=0),BASIC_BUY))); BUY_SIGNAL.Name="BUY_SIGNAL";
+			FormulaData SELL_SIGNAL=IF(SHOW_PERFECT_ONLY==1,PERFECT_SELL,
+            IF(SENSITIVITY==3,STRONG_SELL,
+            IF(SENSITIVITY==2,STRONG_SELL | (BASIC_SELL & COUNTDOWN!=0),BASIC_SELL))); SELL_SIGNAL.Name="SELL_SIGNAL";
+			FormulaData NONAME0=DRAWICON(SELL_SIGNAL , C ,"Sell.Gif");NONAME0.SetAttrs("Top");
+			FormulaData NONAME1=DRAWICON(BUY_SIGNAL , C ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+			
+			return new FormulaPackage(new FormulaData[]{SUPPORT_LINES,RESISTANCE_LINES,NONAME0,NONAME1},"");
+		}
+	
+		public override string LongName
+		{
+			get{return "TD Sequential Complete Trading System";}
+		}
+	
+		public override string Description
+		{
+			get{return "TD Sequential tam alım satım sistemi - Tüm sinyaller, destek-direnç çizgileri ve mükemmelleştirme";}
+		}
+		public override string OutputFields
+		{
+			get{return "SUPPORT_LINES,RESISTANCE_LINES,DRAWICON(SELL_SIGNAL , C ,\"Sell.Gif\"),DRAWICON(BUY_SIGNAL , C ,\"Buy.Gif\")";}
+		}
+	} //class TDTRADING_COMPLETE
+
+	[System.Serializable]
+	public class TDSEQ_SR:FormulaBase
+	{
+		public TDSEQ_SR():base()
+		{
+		}
+	
+		public override FormulaPackage Run(IFormulaDataProvider DP)
+		{
+			this.DataProvider = DP;
+			FormulaData SETUP=TDSETUP(C); SETUP.Name="SETUP";
+			FormulaData SUPPORT_LINES=TDSUPPORTMULTI(H,L,SETUP); SUPPORT_LINES.Name="SUPPORT_LINES";
+			FormulaData RESISTANCE_LINES=TDRESISTANCEMULTI(H,L,SETUP); RESISTANCE_LINES.Name="RESISTANCE_LINES";
+			FormulaData PREV1_H=REF(H,1); PREV1_H.Name="PREV1_H";
+			FormulaData PREV1_L=REF(L,1); PREV1_L.Name="PREV1_L";
+			FormulaData PREV2_H=REF(H,2); PREV2_H.Name="PREV2_H";
+			FormulaData PREV2_L=REF(L,2); PREV2_L.Name="PREV2_L";
+			FormulaData PREV1_SUPPORT=REF(SUPPORT_LINES,1); PREV1_SUPPORT.Name="PREV1_SUPPORT";
+			FormulaData PREV1_RESISTANCE=REF(RESISTANCE_LINES,1); PREV1_RESISTANCE.Name="PREV1_RESISTANCE";
+			FormulaData PREV2_SUPPORT=REF(SUPPORT_LINES,2); PREV2_SUPPORT.Name="PREV2_SUPPORT";
+			FormulaData PREV2_RESISTANCE=REF(RESISTANCE_LINES,2); PREV2_RESISTANCE.Name="PREV2_RESISTANCE";
+			FormulaData PREV_BELOW_SUPPORT=(PREV1_H < PREV2_SUPPORT) | (PREV1_L < PREV2_SUPPORT); PREV_BELOW_SUPPORT.Name="PREV_BELOW_SUPPORT";
+			FormulaData NOW_ABOVE_SUPPORT=L >= PREV1_SUPPORT; NOW_ABOVE_SUPPORT.Name="NOW_ABOVE_SUPPORT";
+			FormulaData SUPPORT_BUY=PREV_BELOW_SUPPORT & NOW_ABOVE_SUPPORT; SUPPORT_BUY.Name="SUPPORT_BUY";
+			FormulaData PREV_BELOW_RESISTANCE=(PREV1_H < PREV2_RESISTANCE) | (PREV1_L < PREV2_RESISTANCE); PREV_BELOW_RESISTANCE.Name="PREV_BELOW_RESISTANCE";
+			FormulaData NOW_ABOVE_RESISTANCE=L >= PREV1_RESISTANCE; NOW_ABOVE_RESISTANCE.Name="NOW_ABOVE_RESISTANCE";
+			FormulaData RESISTANCE_BUY=PREV_BELOW_RESISTANCE & NOW_ABOVE_RESISTANCE; RESISTANCE_BUY.Name="RESISTANCE_BUY";
+			FormulaData PREV_ABOVE_SUPPORT=(PREV1_L > PREV2_SUPPORT) | (PREV1_H > PREV2_SUPPORT); PREV_ABOVE_SUPPORT.Name="PREV_ABOVE_SUPPORT";
+			FormulaData NOW_BELOW_SUPPORT=H <= PREV1_SUPPORT; NOW_BELOW_SUPPORT.Name="NOW_BELOW_SUPPORT";
+			FormulaData SUPPORT_SELL=PREV_ABOVE_SUPPORT & NOW_BELOW_SUPPORT; SUPPORT_SELL.Name="SUPPORT_SELL";
+			FormulaData PREV_ABOVE_RESISTANCE=(PREV1_L > PREV2_RESISTANCE) | (PREV1_H > PREV2_RESISTANCE); PREV_ABOVE_RESISTANCE.Name="PREV_ABOVE_RESISTANCE";
+			FormulaData NOW_BELOW_RESISTANCE=H <= PREV1_RESISTANCE; NOW_BELOW_RESISTANCE.Name="NOW_BELOW_RESISTANCE";
+			FormulaData RESISTANCE_SELL=PREV_ABOVE_RESISTANCE & NOW_BELOW_RESISTANCE; RESISTANCE_SELL.Name="RESISTANCE_SELL";
+			FormulaData BUY_SIGNAL=SUPPORT_BUY | RESISTANCE_BUY; BUY_SIGNAL.Name="BUY_SIGNAL";
+			FormulaData SELL_SIGNAL=SUPPORT_SELL | RESISTANCE_SELL; SELL_SIGNAL.Name="SELL_SIGNAL";
+			FormulaData NONAME0=DRAWICON(BUY_SIGNAL,L,"AltBuy.gif");NONAME0.SetAttrs("Bottom");
+			FormulaData NONAME1=DRAWICON(SELL_SIGNAL,H,"AltSell.gif");NONAME1.SetAttrs("Top");
+			FormulaData SIGNAL_DIRECTION=IF(BUY_SIGNAL,1,IF(SELL_SIGNAL,-1,0)); SIGNAL_DIRECTION.Name="SIGNAL_DIRECTION";
+			return new FormulaPackage(new FormulaData[]{SETUP,SUPPORT_LINES,RESISTANCE_LINES,NONAME0,NONAME1,SIGNAL_DIRECTION},"");
+		}
+	
+		public override string LongName
+		{
+			get{return "TD Sequential Support/Resistance Breakout Signals";}
+		}
+	
+		public override string Description
+		{
+			get{return "TD Sequential destek/direnç çizgilerinin tam kırılım sinyalleri. Bir önceki barda OHLC değerleri çizginin bütünüyle/kısmen altında/üstündeyken, yeni barda bütünüyle karşı tarafa geçtiğinde sinyal üretir.";}
+		}
+		public override string OutputFields
+		{
+			get{return "SETUP,SUPPORT_LINES,RESISTANCE_LINES,DRAWICON(BUY_SIGNAL,L,\"AltBuy.gif\"),DRAWICON(SELL_SIGNAL,H,\"AltSell.gif\"),SIGNAL_DIRECTION";}
+		}
+	} //class TDSEQ_SR
+
+	[System.Serializable]
+	public class TDTRADING_SIMPLE:FormulaBase
+	{
+		public TDTRADING_SIMPLE():base()
+		{
+		}
+	
+		public override FormulaPackage Run(IFormulaDataProvider DP)
+		{
+			this.DataProvider = DP;
+			FormulaData SETUP=TDSETUP(C); SETUP.Name="SETUP";
+			FormulaData COUNTDOWN=TDCOUNTDOWN(C,H,L,SETUP); COUNTDOWN.Name="COUNTDOWN";
+			FormulaData BUY_SIGNAL=SETUP==9 | COUNTDOWN==13; BUY_SIGNAL.Name="BUY_SIGNAL";
+			FormulaData SELL_SIGNAL=SETUP==-9 | COUNTDOWN==-13; SELL_SIGNAL.Name="SELL_SIGNAL";
+			FormulaData NONAME0=DRAWICON(SELL_SIGNAL , C ,"Sell.Gif");NONAME0.SetAttrs("Top");
+			FormulaData NONAME1=DRAWICON(BUY_SIGNAL , C ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+			
+			return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1},"");
+		}
+	
+		public override string LongName
+		{
+			get{return "TD Sequential Simple Trading";}
+		}
+	
+		public override string Description
+		{
+			get{return "Basit TD Sequential alım satım sinyalleri - sadece temel oklar";}
+		}
+		public override string OutputFields
+		{
+			get{return "DRAWICON(SELL_SIGNAL , C ,\"Sell.Gif\"),DRAWICON(BUY_SIGNAL , C ,\"Buy.Gif\")";}
+		}
+	} //class TDTRADING_SIMPLE
+
+	[System.Serializable]
+	public class TDTRADING_PERFECT:FormulaBase
+	{
+		public TDTRADING_PERFECT():base()
+		{
+		}
+	
+		public override FormulaPackage Run(IFormulaDataProvider DP)
+		{
+			this.DataProvider = DP;
+			FormulaData SETUP=TDSETUP(C); SETUP.Name="SETUP";
+			FormulaData COUNTDOWN=TDCOUNTDOWN(C,H,L,SETUP); COUNTDOWN.Name="COUNTDOWN";
+			FormulaData PERFECTED=TDPERFECTED(H,L,SETUP); PERFECTED.Name="PERFECTED";
+			FormulaData BUY_SIGNAL=SETUP==9 | COUNTDOWN==13; BUY_SIGNAL.Name="BUY_SIGNAL";
+			FormulaData SELL_SIGNAL=SETUP==-9 | COUNTDOWN==-13; SELL_SIGNAL.Name="SELL_SIGNAL";
+			FormulaData PERFECT_BUY=BUY_SIGNAL & PERFECTED>0; PERFECT_BUY.Name="PERFECT_BUY";
+			FormulaData PERFECT_SELL=SELL_SIGNAL & PERFECTED<0; PERFECT_SELL.Name="PERFECT_SELL";
+			FormulaData NONAME0=DRAWICON(SELL_SIGNAL , C ,"Sell.Gif");NONAME0.SetAttrs("Top");
+			FormulaData NONAME1=DRAWICON(BUY_SIGNAL , C ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+			
+			return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1},"");
+		}
+	
+		public override string LongName
+		{
+			get{return "TD Sequential Perfect Trading";}
+		}
+	
+		public override string Description
+		{
+			get{return "Mükemmel TD Sequential sinyalleri - M harfi ile işaretleme";}
+		}
+		public override string OutputFields
+		{
+			get{return "DRAWICON(SELL_SIGNAL , C ,\"Sell.Gif\"),DRAWICON(BUY_SIGNAL , C ,\"Buy.Gif\")";}
+		}
+	} //class TDTRADING_PERFECT
+
+	[System.Serializable]
+	public class TDSEQUENTIAL_SR:FormulaBase
+	{
+		public TDSEQUENTIAL_SR():base()
+		{
+		}
+	
+		public override FormulaPackage Run(IFormulaDataProvider DP)
+		{
+			this.DataProvider = DP;
+			FormulaData SETUP=TDSETUP(C); SETUP.Name="SETUP";
+			SETLINEVISIBLE(SETUP, FALSE);
+			FormulaData COUNTDOWN=TDCOUNTDOWN(C,H,L,SETUP); COUNTDOWN.Name="COUNTDOWN";
+			SETLINEVISIBLE(COUNTDOWN, FALSE);
+			FormulaData SIGNAL=IF(COUNTDOWN!=0,COUNTDOWN,SETUP); SIGNAL.Name="SIGNAL";
+			SETLINEVISIBLE(SIGNAL, FALSE);
+			FormulaData SUPPORT=TDSUPPORT(H,L,SETUP); SUPPORT.Name="SUPPORT";
+			FormulaData RESISTANCE=TDRESISTANCE(H,L,SETUP); RESISTANCE.Name="RESISTANCE";
+			FormulaData PERFECTED=TDPERFECTED(H,L,SETUP); PERFECTED.Name="PERFECTED";PERFECTED.SetAttrs(" NODRAW");
+			FormulaData BUYFLIP=ISBUYFLIP(C); BUYFLIP.Name="BUYFLIP";
+			FormulaData SELLFLIP=ISSELLFLIP(C); SELLFLIP.Name="SELLFLIP";
+			FormulaData BUY9=IF(SETUP==9,1,0); BUY9.Name="BUY9";
+			FormulaData SELL9=IF(SETUP==-9,1,0); SELL9.Name="SELL9";
+			FormulaData BUY13=IF(COUNTDOWN==22,1,0); BUY13.Name="BUY13";
+			FormulaData SELL13=IF(COUNTDOWN==-22,1,0); SELL13.Name="SELL13";
+			
+			return new FormulaPackage(new FormulaData[]{SETUP,COUNTDOWN,SIGNAL,SUPPORT,RESISTANCE,PERFECTED,BUYFLIP,SELLFLIP,BUY9,SELL9,BUY13,SELL13},"");
+		}
+	
+		public override string LongName
+		{
+			get{return "TD Sequential SUPPORT, RESISTANCE Lines";}
+		}
+	
+		public override string Description
+		{
+			get{return "TD Sequential detaylı analiz - Tüm bileşenlerin ayrıntılı görünümü.";}
+		}
+		public override string OutputFields
+		{
+			get{return "SETUP,COUNTDOWN,SIGNAL,SUPPORT,RESISTANCE,PERFECTED,BUYFLIP,SELLFLIP,BUY9,SELL9,BUY13,SELL13";}
+		}
+	} //class TDSEQUENTIAL_SR
+
+	[System.Serializable]
+	public class T_TDSEQ_SR:FormulaBase
+	{
+		public double ONMAIN=0;
+		public T_TDSEQ_SR():base()
+		{
+			AddParam("onMain","0","0","1","1","",FormulaParamType.Double);
+		}
+	
+		public override FormulaPackage Run(IFormulaDataProvider DP)
+		{
+			this.DataProvider = DP;
+			FormulaData SETUP=TDSETUP(C); SETUP.Name="SETUP";
+			FormulaData SUPPORT_LINES=TDSUPPORTMULTI(H,L,SETUP); SUPPORT_LINES.Name="SUPPORT_LINES";
+			FormulaData RESISTANCE_LINES=TDRESISTANCEMULTI(H,L,SETUP); RESISTANCE_LINES.Name="RESISTANCE_LINES";
+			FormulaData PREV1_H=REF(H,1); PREV1_H.Name="PREV1_H";
+			FormulaData PREV1_L=REF(L,1); PREV1_L.Name="PREV1_L";
+			FormulaData PREV2_H=REF(H,2); PREV2_H.Name="PREV2_H";
+			FormulaData PREV2_L=REF(L,2); PREV2_L.Name="PREV2_L";
+			FormulaData PREV1_SUPPORT=REF(SUPPORT_LINES,1); PREV1_SUPPORT.Name="PREV1_SUPPORT";
+			FormulaData PREV1_RESISTANCE=REF(RESISTANCE_LINES,1); PREV1_RESISTANCE.Name="PREV1_RESISTANCE";
+			FormulaData PREV2_SUPPORT=REF(SUPPORT_LINES,2); PREV2_SUPPORT.Name="PREV2_SUPPORT";
+			FormulaData PREV2_RESISTANCE=REF(RESISTANCE_LINES,2); PREV2_RESISTANCE.Name="PREV2_RESISTANCE";
+			FormulaData PREV_BELOW_SUPPORT=(PREV1_H < PREV2_SUPPORT) | (PREV1_L < PREV2_SUPPORT); PREV_BELOW_SUPPORT.Name="PREV_BELOW_SUPPORT";
+			FormulaData NOW_ABOVE_SUPPORT=L >= PREV1_SUPPORT; NOW_ABOVE_SUPPORT.Name="NOW_ABOVE_SUPPORT";
+			FormulaData SUPPORT_BUY=PREV_BELOW_SUPPORT & NOW_ABOVE_SUPPORT; SUPPORT_BUY.Name="SUPPORT_BUY";
+			FormulaData PREV_BELOW_RESISTANCE=(PREV1_H < PREV2_RESISTANCE) | (PREV1_L < PREV2_RESISTANCE); PREV_BELOW_RESISTANCE.Name="PREV_BELOW_RESISTANCE";
+			FormulaData NOW_ABOVE_RESISTANCE=L >= PREV1_RESISTANCE; NOW_ABOVE_RESISTANCE.Name="NOW_ABOVE_RESISTANCE";
+			FormulaData RESISTANCE_BUY=PREV_BELOW_RESISTANCE & NOW_ABOVE_RESISTANCE; RESISTANCE_BUY.Name="RESISTANCE_BUY";
+			FormulaData PREV_ABOVE_SUPPORT=(PREV1_L > PREV2_SUPPORT) | (PREV1_H > PREV2_SUPPORT); PREV_ABOVE_SUPPORT.Name="PREV_ABOVE_SUPPORT";
+			FormulaData NOW_BELOW_SUPPORT=H <= PREV1_SUPPORT; NOW_BELOW_SUPPORT.Name="NOW_BELOW_SUPPORT";
+			FormulaData SUPPORT_SELL=PREV_ABOVE_SUPPORT & NOW_BELOW_SUPPORT; SUPPORT_SELL.Name="SUPPORT_SELL";
+			FormulaData PREV_ABOVE_RESISTANCE=(PREV1_L > PREV2_RESISTANCE) | (PREV1_H > PREV2_RESISTANCE); PREV_ABOVE_RESISTANCE.Name="PREV_ABOVE_RESISTANCE";
+			FormulaData NOW_BELOW_RESISTANCE=H <= PREV1_RESISTANCE; NOW_BELOW_RESISTANCE.Name="NOW_BELOW_RESISTANCE";
+			FormulaData RESISTANCE_SELL=PREV_ABOVE_RESISTANCE & NOW_BELOW_RESISTANCE; RESISTANCE_SELL.Name="RESISTANCE_SELL";
+			FormulaData BUY_BASIC=SUPPORT_BUY | RESISTANCE_BUY; BUY_BASIC.Name="BUY_BASIC";
+			FormulaData SELL_BASIC=SUPPORT_SELL | RESISTANCE_SELL; SELL_BASIC.Name="SELL_BASIC";
+			FormulaData BARS_SINCE_BUY=BARSSINCE(BUY_BASIC); BARS_SINCE_BUY.Name="BARS_SINCE_BUY";
+			FormulaData ENTRY_PRICE=REF(C, BARS_SINCE_BUY); ENTRY_PRICE.Name="ENTRY_PRICE";
+			FormulaData DROP_2_PERCENT=(C < (ENTRY_PRICE * 0.98)) & (BARS_SINCE_BUY > 0); DROP_2_PERCENT.Name="DROP_2_PERCENT";
+			FormulaData BUY=BUY_BASIC; BUY.Name="BUY";
+			FormulaData SELL=SELL_BASIC & NOT(DROP_2_PERCENT & BARS_SINCE_BUY < 5); SELL.Name="SELL";
+			FormulaData SIGNAL_DIRECTION=IF(BUY,1,IF(SELL,-1,0)); SIGNAL_DIRECTION.Name="SIGNAL_DIRECTION";
+			FormulaData ALTBUY=EMPTY; ALTBUY.Name="ALTBUY";
+			FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+			FormulaData OPENSELL=EMPTY; OPENSELL.Name="OPENSELL";OPENSELL.SetAttrs("ColorDarkOrange");
+			FormulaData CLOSEOPENSELL=EMPTY; CLOSEOPENSELL.Name="CLOSEOPENSELL";CLOSEOPENSELL.SetAttrs("ColorDarkViolet");
+			FormulaData STOPLOSS=EMPTY; STOPLOSS.Name="STOPLOSS";
+			FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+			FormulaData BT= IF(ONMAIN, C, BACKTEST(C,BUY,SELL,OPENSELL,CLOSEOPENSELL,BALANCE[0],0.000342,1,ALTBUY,ALTSELL,0.0,STOPLOSS,0.0,FALSE)); BT.Name="BT";
+			FormulaData NONAME0=DRAWICON(BUY, IF(ONMAIN, C, BT) ,"Buy.Gif");NONAME0.SetAttrs("Bottom");
+			FormulaData NONAME1=DRAWICON(SELL, IF(ONMAIN, C, BT) ,"Sell.Gif");NONAME1.SetAttrs("Top");
+			FormulaData NONAME2=DRAWICON(OPENSELL, IF(ONMAIN, C, BT) ,"OpenSell.Gif");NONAME2.SetAttrs("Top");
+			FormulaData NONAME3=DRAWICON(CLOSEOPENSELL, IF(ONMAIN, C, BT) ,"CloseOpenSell.Gif");NONAME3.SetAttrs("Bottom");
+			FormulaData NONAME4=DRAWICON(IF(ONMAIN, 0, ALTBUY), BT ,"AltBuy.Gif");NONAME4.SetAttrs("Bottom");
+			FormulaData NONAME5=DRAWICON(IF(ONMAIN, 0, ALTSELL), BT ,"AltSell.Gif");NONAME5.SetAttrs("Top");
+			FormulaData STOPBUYS= STOPLOSS>0; STOPBUYS.Name="STOPBUYS";
+			FormulaData STOPSELLS=STOPLOSS<0; STOPSELLS.Name="STOPSELLS";
+			FormulaData NONAME6=DRAWICON(IF(ONMAIN, 0, STOPBUYS), BT ,"StopBuy.Gif");NONAME6.SetAttrs("Bottom");
+			FormulaData NONAME7=DRAWICON(IF(ONMAIN, 0, STOPSELLS), BT ,"StopSell.Gif");NONAME7.SetAttrs("Top");
+			FormulaData MAXPERF= IF(ONMAIN, EMPTY, (BALANCE/LLV(L))*HHV(H)); MAXPERF.Name="MaxPerf";
+			FormulaData NONAME8=IF(ONMAIN, EMPTY, BT);
+			FormulaData NONAME9=IF(ONMAIN, EMPTY, MAXPERF);NONAME9.SetAttrs(" DarkGreen,Width2");
+			return new FormulaPackage(new FormulaData[]{SETUP,SUPPORT_LINES,RESISTANCE_LINES,SIGNAL_DIRECTION,NONAME0,NONAME1,NONAME2,NONAME3,NONAME4,NONAME5,NONAME6,NONAME7,NONAME8,NONAME9},"");
+		}
+	
+		public override string LongName
+		{
+			get{return "";}
+		}
+	
+		public override string Description
+		{
+			get{return "TD Sequential destek/direnç çizgilerinin tam kırılım sinyalleri. Bir önceki barda OHLC değerleri çizginin bütünüyle/kısmen altında/üstündeyken, yeni barda bütünüyle karşı tarafa geçtiğinde sinyal üretir.";}
+		}
+		public override string OutputFields
+		{
+			get{return "SETUP,SUPPORT_LINES,RESISTANCE_LINES,SIGNAL_DIRECTION,DRAWICON(BUY, if(OnMain, C, BT) ,\"Buy.Gif\"),DRAWICON(SELL, if(OnMain, C, BT) ,\"Sell.Gif\"),DRAWICON(OPENSELL, if(OnMain, C, BT) ,\"OpenSell.Gif\"),DRAWICON(CLOSEOPENSELL, if(OnMain, C, BT) ,\"CloseOpenSell.Gif\"),DRAWICON(if(OnMain, 0, ALTBUY), BT ,\"AltBuy.Gif\"),DRAWICON(if(OnMain, 0, ALTSELL), BT ,\"AltSell.Gif\"),DRAWICON(if(OnMain, 0, STOPBUYS), BT ,\"StopBuy.Gif\"),DRAWICON(if(OnMain, 0, STOPSELLS), BT ,\"StopSell.Gif\"),if(OnMain, EMPTY, BT),if(OnMain, EMPTY, MaxPerf)";}
+		}
+	} //class T_TDSEQ_SR
+
+	[System.Serializable]
+	public class T_TDSEQ_SR2:FormulaBase
+	{
+		public double ONMAIN=0;
+		public T_TDSEQ_SR2():base()
+		{
+			AddParam("onMain","0","0","1","1","",FormulaParamType.Double);
+		}
+	
+		public override FormulaPackage Run(IFormulaDataProvider DP)
+		{
+			this.DataProvider = DP;
+			FormulaData SETUP=TDSETUP(C); SETUP.Name="SETUP";
+			FormulaData SUPPORT_LINES=TDSUPPORTMULTI(H,L,SETUP); SUPPORT_LINES.Name="SUPPORT_LINES";
+			FormulaData RESISTANCE_LINES=TDRESISTANCEMULTI(H,L,SETUP); RESISTANCE_LINES.Name="RESISTANCE_LINES";
+			FormulaData PREV1_H=REF(H,1); PREV1_H.Name="PREV1_H";
+			FormulaData PREV1_L=REF(L,1); PREV1_L.Name="PREV1_L";
+			FormulaData PREV2_H=REF(H,2); PREV2_H.Name="PREV2_H";
+			FormulaData PREV2_L=REF(L,2); PREV2_L.Name="PREV2_L";
+			FormulaData PREV1_SUPPORT=REF(SUPPORT_LINES,1); PREV1_SUPPORT.Name="PREV1_SUPPORT";
+			FormulaData PREV1_RESISTANCE=REF(RESISTANCE_LINES,1); PREV1_RESISTANCE.Name="PREV1_RESISTANCE";
+			FormulaData PREV2_SUPPORT=REF(SUPPORT_LINES,2); PREV2_SUPPORT.Name="PREV2_SUPPORT";
+			FormulaData PREV2_RESISTANCE=REF(RESISTANCE_LINES,2); PREV2_RESISTANCE.Name="PREV2_RESISTANCE";
+			FormulaData CLOSE_ABOVE_BOTH=C > PREV1_SUPPORT & C > PREV1_RESISTANCE; CLOSE_ABOVE_BOTH.Name="CLOSE_ABOVE_BOTH";
+			FormulaData BUY_SIGNAL=CLOSE_ABOVE_BOTH; BUY_SIGNAL.Name="BUY_SIGNAL";
+			FormulaData PREV_ABOVE_SUPPORT=(PREV1_L > PREV2_SUPPORT) | (PREV1_H > PREV2_SUPPORT); PREV_ABOVE_SUPPORT.Name="PREV_ABOVE_SUPPORT";
+			FormulaData NOW_BELOW_SUPPORT=H <= PREV1_SUPPORT; NOW_BELOW_SUPPORT.Name="NOW_BELOW_SUPPORT";
+			FormulaData SUPPORT_SELL=PREV_ABOVE_SUPPORT & NOW_BELOW_SUPPORT; SUPPORT_SELL.Name="SUPPORT_SELL";
+			FormulaData PREV_ABOVE_RESISTANCE=(PREV1_L > PREV2_RESISTANCE) | (PREV1_H > PREV2_RESISTANCE); PREV_ABOVE_RESISTANCE.Name="PREV_ABOVE_RESISTANCE";
+			FormulaData NOW_BELOW_RESISTANCE=H <= PREV1_RESISTANCE; NOW_BELOW_RESISTANCE.Name="NOW_BELOW_RESISTANCE";
+			FormulaData RESISTANCE_SELL=PREV_ABOVE_RESISTANCE & NOW_BELOW_RESISTANCE; RESISTANCE_SELL.Name="RESISTANCE_SELL";
+			FormulaData BUY_BASIC=BUY_SIGNAL; BUY_BASIC.Name="BUY_BASIC";
+			FormulaData SELL_BASIC=SUPPORT_SELL | RESISTANCE_SELL; SELL_BASIC.Name="SELL_BASIC";
+			FormulaData BARS_SINCE_BUY=BARSSINCE(BUY_BASIC); BARS_SINCE_BUY.Name="BARS_SINCE_BUY";
+			FormulaData ENTRY_PRICE=REF(C, BARS_SINCE_BUY); ENTRY_PRICE.Name="ENTRY_PRICE";
+			FormulaData DROP_2_PERCENT=(C < (ENTRY_PRICE * 0.98)) & (BARS_SINCE_BUY > 0); DROP_2_PERCENT.Name="DROP_2_PERCENT";
+			FormulaData BUY=BUY_BASIC; BUY.Name="BUY";
+			FormulaData SELL=SELL_BASIC & NOT(DROP_2_PERCENT & BARS_SINCE_BUY < 5); SELL.Name="SELL";
+			FormulaData SIGNAL_DIRECTION=IF(BUY,1,IF(SELL,-1,0)); SIGNAL_DIRECTION.Name="SIGNAL_DIRECTION";
+			FormulaData ALTBUY=EMPTY; ALTBUY.Name="ALTBUY";
+			FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+			FormulaData OPENSELL=EMPTY; OPENSELL.Name="OPENSELL";OPENSELL.SetAttrs("ColorDarkOrange");
+			FormulaData CLOSEOPENSELL=EMPTY; CLOSEOPENSELL.Name="CLOSEOPENSELL";CLOSEOPENSELL.SetAttrs("ColorDarkViolet");
+			FormulaData STOPLOSS=EMPTY; STOPLOSS.Name="STOPLOSS";
+			FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+			FormulaData BT= IF(ONMAIN, C, BACKTEST(C,BUY,SELL,OPENSELL,CLOSEOPENSELL,BALANCE[0],0.000342,1,ALTBUY,ALTSELL,0.0,STOPLOSS,0.0,FALSE)); BT.Name="BT";
+			FormulaData NONAME0=DRAWICON(BUY, IF(ONMAIN, C, BT) ,"Buy.Gif");NONAME0.SetAttrs("Bottom");
+			FormulaData NONAME1=DRAWICON(SELL, IF(ONMAIN, C, BT) ,"Sell.Gif");NONAME1.SetAttrs("Top");
+			FormulaData NONAME2=DRAWICON(OPENSELL, IF(ONMAIN, C, BT) ,"OpenSell.Gif");NONAME2.SetAttrs("Top");
+			FormulaData NONAME3=DRAWICON(CLOSEOPENSELL, IF(ONMAIN, C, BT) ,"CloseOpenSell.Gif");NONAME3.SetAttrs("Bottom");
+			FormulaData NONAME4=DRAWICON(IF(ONMAIN, 0, ALTBUY), BT ,"AltBuy.Gif");NONAME4.SetAttrs("Bottom");
+			FormulaData NONAME5=DRAWICON(IF(ONMAIN, 0, ALTSELL), BT ,"AltSell.Gif");NONAME5.SetAttrs("Top");
+			FormulaData STOPBUYS= STOPLOSS>0; STOPBUYS.Name="STOPBUYS";
+			FormulaData STOPSELLS=STOPLOSS<0; STOPSELLS.Name="STOPSELLS";
+			FormulaData NONAME6=DRAWICON(IF(ONMAIN, 0, STOPBUYS), BT ,"StopBuy.Gif");NONAME6.SetAttrs("Bottom");
+			FormulaData NONAME7=DRAWICON(IF(ONMAIN, 0, STOPSELLS), BT ,"StopSell.Gif");NONAME7.SetAttrs("Top");
+			FormulaData MAXPERF= IF(ONMAIN, EMPTY, (BALANCE/LLV(L))*HHV(H)); MAXPERF.Name="MaxPerf";
+			FormulaData NONAME8=IF(ONMAIN, EMPTY, BT);
+			FormulaData NONAME9=IF(ONMAIN, EMPTY, MAXPERF);NONAME9.SetAttrs(" DarkGreen,Width2");
+			return new FormulaPackage(new FormulaData[]{SETUP,SUPPORT_LINES,RESISTANCE_LINES,SIGNAL_DIRECTION,NONAME0,NONAME1,NONAME2,NONAME3,NONAME4,NONAME5,NONAME6,NONAME7,NONAME8,NONAME9},"");
+		}
+	
+		public override string LongName
+		{
+			get{return "";}
+		}
+	
+		public override string Description
+		{
+			get{return "TD Sequential destek/direnç çizgilerinin tam kırılım sinyalleri. Bir önceki barda OHLC değerleri çizginin bütünüyle/kısmen altında/üstündeyken, yeni barda bütünüyle karşı tarafa geçtiğinde sinyal üretir.";}
+		}
+		public override string OutputFields
+		{
+			get{return "SETUP,SUPPORT_LINES,RESISTANCE_LINES,SIGNAL_DIRECTION,DRAWICON(BUY, if(OnMain, C, BT) ,\"Buy.Gif\"),DRAWICON(SELL, if(OnMain, C, BT) ,\"Sell.Gif\"),DRAWICON(OPENSELL, if(OnMain, C, BT) ,\"OpenSell.Gif\"),DRAWICON(CLOSEOPENSELL, if(OnMain, C, BT) ,\"CloseOpenSell.Gif\"),DRAWICON(if(OnMain, 0, ALTBUY), BT ,\"AltBuy.Gif\"),DRAWICON(if(OnMain, 0, ALTSELL), BT ,\"AltSell.Gif\"),DRAWICON(if(OnMain, 0, STOPBUYS), BT ,\"StopBuy.Gif\"),DRAWICON(if(OnMain, 0, STOPSELLS), BT ,\"StopSell.Gif\"),if(OnMain, EMPTY, BT),if(OnMain, EMPTY, MaxPerf)";}
+		}
+	} //class T_TDSEQ_SR2
+
+	#endregion
+
+} // namespace FML

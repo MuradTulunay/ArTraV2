@@ -1,0 +1,2627 @@
+using ArTraV2.Core.Formula;
+
+
+
+namespace FML
+{
+	namespace Trading
+	{
+		[System.Serializable]
+		public class _T_RSI_AS:FormulaBase
+		{
+			public double N=0;
+			public double UP=0;
+			public double DW=0;
+			public _T_RSI_AS():base()
+			{
+				AddParam("N","3","2","21","1","",FormulaParamType.Double);
+				AddParam("UP","-80","-95","95","5","",FormulaParamType.Double);
+				AddParam("DW","5","-95","95","3","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData BUY=CROSS(FML(DP,"RSI(N)"),DW); BUY.Name="BUY";BUY.SetAttrs("ColorDarkGreen");
+				FormulaData SELL=CROSS(UP,FML(DP,"RSI(N)")); SELL.Name="SELL";SELL.SetAttrs("ColorRed");
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,BUY,SELL,0,0,BALANCE[0],0.000342,1,ALTBUY,ALTSELL); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(SELL , BT ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , BT ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData MAXPERF= (BALANCE/LLV(L))*HHV(H); MAXPERF.Name="MaxPerf";
+				FormulaData NONAME2=BT;
+				FormulaData NONAME3=MAXPERF;NONAME3.SetAttrs(" DarkGreen,Width2");
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "RSI Trading System Sadece normal Al-Sat";}
+			}
+		
+			public override string Description
+			{
+				get{return "RSI Trading system\n\n\n\n\n";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , BT ,\"Sell.Gif\"),DRAWICON(BUY , BT ,\"Buy.Gif\"),BT,MaxPerf";}
+			}
+		} //class _T_RSI_AS
+
+		[System.Serializable]
+		public class _T_RSI_OS:FormulaBase
+		{
+			public double N=0;
+			public double OUP=0;
+			public double ODW=0;
+			public _T_RSI_OS():base()
+			{
+				AddParam("N","3","3","8","2","",FormulaParamType.Double);
+				AddParam("OUP","70","-95","95","1","",FormulaParamType.Double);
+				AddParam("ODW","30","-95","95","1","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData CLOSEOPENPOSITION=CROSS(FML(DP,"RSI(N)"),ODW); CLOSEOPENPOSITION.Name="CLOSEOPENPOSITION";CLOSEOPENPOSITION.SetAttrs("ColorDarkGreen");
+				FormulaData OPENSELL=CROSS(OUP,FML(DP,"RSI(N)")); OPENSELL.Name="OPENSELL";OPENSELL.SetAttrs("ColorRed");
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,0,0,OPENSELL,CLOSEOPENPOSITION,BALANCE[0],0.000342,1,ALTBUY,ALTSELL); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(OPENSELL, BT ,"OpenSell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(CLOSEOPENPOSITION, BT ,"CloseOpenSell.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData AMT= BALANCE/C[0]; AMT.Name="AMT";
+				FormulaData MAXPERF= (BALANCE/LLV(L))*HHV(H); MAXPERF.Name="MaxPerf";
+				FormulaData NONAME2=BT;
+				FormulaData PERF=C*AMT; PERF.Name="Perf";
+				FormulaData NONAME3=BALANCE;NONAME3.SetAttrs("ColorDarkRed");
+				FormulaData NONAME4=MAXPERF;NONAME4.SetAttrs(" DarkGreen,Width2");
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,PERF,NONAME3,NONAME4},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "RSI Trading System Sadece Açığa satış";}
+			}
+		
+			public override string Description
+			{
+				get{return "RSI Trading system";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(OPENSELL, BT ,\"OpenSell.Gif\"),DRAWICON(CLOSEOPENPOSITION, BT ,\"CloseOpenSell.Gif\"),BT,Perf,BALANCE,MaxPerf";}
+			}
+		} //class _T_RSI_OS
+
+		[System.Serializable]
+		public class MACD:FormulaBase
+		{
+			public double N1=0;
+			public double N2=0;
+			public double N3=0;
+			public MACD():base()
+			{
+				AddParam("N1","26","13","40","1","",FormulaParamType.Double);
+				AddParam("N2","12","6","26","1","",FormulaParamType.Double);
+				AddParam("N3","9","3","9","1","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData BUY=LONGCROSS(FML(DP,"MACD(N1,N2,N3)"),0.2,3); BUY.Name="BUY";
+				FormulaData SELL=LONGCROSS(-0.2,FML(DP,"MACD(N1,N2,N3)"),3); SELL.Name="SELL";
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,BUY,SELL,0,0,BALANCE[0],0.000342,1,ALTBUY,ALTSELL); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(SELL , BT ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , BT ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData AMT= BALANCE/C[0]; AMT.Name="AMT";
+				FormulaData MAXPERF= (BALANCE/LLV(L))*HHV(H); MAXPERF.Name="MaxPerf";
+				FormulaData NONAME2=BT;
+				FormulaData PERF=C*AMT; PERF.Name="Perf";
+				FormulaData NONAME3=BALANCE;NONAME3.SetAttrs("ColorDarkRed");
+				FormulaData NONAME4=MAXPERF;NONAME4.SetAttrs(" DarkGreen,Width2");
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,PERF,NONAME3,NONAME4},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "MACD Trading System";}
+			}
+		
+			public override string Description
+			{
+				get{return "MACD Trading System";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , BT ,\"Sell.Gif\"),DRAWICON(BUY , BT ,\"Buy.Gif\"),BT,Perf,BALANCE,MaxPerf";}
+			}
+		} //class MACD
+
+		[System.Serializable]
+		public class _T_ZARF:FormulaBase
+		{
+			public double OPT1=0;
+			public double OPT2=0;
+			public double OPT3=0;
+			public _T_ZARF():base()
+			{
+				AddParam("OPT1","3","3","4","1","",FormulaParamType.Double);
+				AddParam("OPT2","11","11","12","1","",FormulaParamType.Double);
+				AddParam("OPT3","3","3","4","1","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData SIS=FML(DP,"MACD(26,12,9)"); SIS.Name="SIS";
+				FormulaData YUKARI=CROSS(SIS,0); YUKARI.Name="Yukari";
+				FormulaData ASAGI=CROSS(0,SIS); ASAGI.Name="Asagi";
+				FormulaData YTREND=SIS>0; YTREND.Name="Ytrend";
+				FormulaData ATREND=SIS<0; ATREND.Name="Atrend";
+				FormulaData YREF=REF(L,-1); YREF.Name="YRef";
+				FormulaData AREF=REF(H,-1); AREF.Name="ARef";
+				FormulaData SOYN=REF(FML(DP,"ATR(14)"),-1); SOYN.Name="sOyn";
+				FormulaData SYKAL=2-REF(FML(DP,"VHF(C,14)"),-1); SYKAL.Name="sYKal";
+				FormulaData SAKAL= 2-REF(FML(DP,"VHF(C,14)"),-1); SAKAL.Name="sAkal";
+				FormulaData SYSTP=YREF-SOYN*SYKAL; SYSTP.Name="sYstp";
+				FormulaData SASTP=AREF+SOYN*SAKAL; SASTP.Name="sAstp";
+				FormulaData STT=IF(YTREND,HIGHESTSINCE(1,YUKARI,SYSTP), LOWESTSINCE(1,ASAGI,SASTP)); STT.Name="sTT";
+				FormulaData SYT=IF(YTREND & C>STT ,STT,PREV); SYT.Name="sYT";
+				FormulaData SAT=IF(ATREND & C<STT ,STT,PREV); SAT.Name="sAT";
+				FormulaData SARI=IF(YTREND,SYT,SAT); SARI.Name="SARI";
+				FormulaData TR=RSQUARED(C,14); TR.Name="TR";
+				FormulaData TRM=MOV(TR,9,S); TRM.Name="TRM";
+				FormulaData YATAY=4/10; YATAY.Name="Yatay";
+				FormulaData YTG= CROSS(YATAY,TR) | (TR>YATAY & CROSS(TRM,TR) ); YTG.Name="YTG";
+				FormulaData YTC=TR>TRM & TR>YATAY; YTC.Name="YTC";
+				FormulaData YTY=BARSSINCE(YTG)<BARSSINCE(YTC); YTY.Name="YTY";
+				FormulaData FARK=(1+TR)*REF(MOV(MAX(O,C)-MIN(O,C),14,S),-1); FARK.Name="Fark";
+				FormulaData HX=REF(MOV(MAX(O,C)+FARK,5,S),-1); HX.Name="HX";
+				FormulaData LX=REF(MOV(MIN(O,C)-FARK,5,S),-1); LX.Name="LX";
+				FormulaData HS=IF(TR>YATAY & TR>TRM, LOWESTSINCE(1,YTC,HX), VALUEWHEN(1,YTG,HX)); HS.Name="HS";
+				FormulaData LS=IF(TR>YATAY & TR>TRM, HIGHESTSINCE(1,YTC,LX), VALUEWHEN(1,YTG,LX)); LS.Name="LS";
+				FormulaData HXX=MAX(HS,SARI); HXX.Name="HXX";
+				FormulaData LXX=MIN(LS,SARI); LXX.Name="LXX";
+				FormulaData P1=OPT1; P1.Name="p1";
+				FormulaData P2=OPT2; P2.Name="p2";
+				FormulaData R1=1; R1.Name="r1";
+				FormulaData P3=P2; P3.Name="p3";
+				FormulaData YY=OPT3; YY.Name="yy";
+				FormulaData AA=MOV(C,P1,W); AA.Name="AA";
+				FormulaData BB=MOV(AA,P2,W); BB.Name="BB";
+				FormulaData XAA=AA - REF(AA,-R1); XAA.Name="XAA";
+				FormulaData XBB=BB - REF(BB,-R1); XBB.Name="XBB";
+				FormulaData XAB= ABS(AA - BB); XAB.Name="XAB";
+				FormulaData OAB= (XAA+XBB)/2; OAB.Name="OAB";
+				FormulaData PP= XAB* OAB * OAB* OAB; PP.Name="PP";
+				FormulaData XPP=100*PP/HHV(ABS(PP),P3); XPP.Name="XPP";
+				FormulaData YUZDE=1000*(HXX-LXX)/LXX; YUZDE.Name="Yuzde";
+				FormulaData BUY=C>HXX; BUY.Name="BUY";BUY.SetAttrs("ColorDarkGreen");
+				FormulaData SELL=C<LXX; SELL.Name="SELL";SELL.SetAttrs(" ColorRed");
+				FormulaData OPENSELL=C<LXX; OPENSELL.Name="OPENSELL";OPENSELL.SetAttrs("ColorDarkOrange");
+				FormulaData CLOSEOPENSELL=C>HXX; CLOSEOPENSELL.Name="CLOSEOPENSELL";CLOSEOPENSELL.SetAttrs(" ColorDarkViolet");
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,BUY,SELL,OPENSELL,CLOSEOPENSELL,BALANCE[0],0.000342,1,ALTBUY,ALTSELL); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(SELL , BT ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , BT ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData NONAME2=DRAWICON(OPENSELL, BT ,"OpenSell.Gif");NONAME2.SetAttrs("Top");
+				FormulaData NONAME3=DRAWICON(CLOSEOPENSELL, BT ,"CloseOpenSell.Gif");NONAME3.SetAttrs("Bottom");
+				FormulaData MAXPERF= (BALANCE/LLV(L))*HHV(H); MAXPERF.Name="MaxPerf";
+				FormulaData NONAME4=BT;
+				FormulaData NONAME5=MAXPERF;NONAME5.SetAttrs(" DarkGreen,Width2");
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3,NONAME4,NONAME5},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "Zarf Trading signals ";}
+			}
+		
+			public override string Description
+			{
+				get{return "";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , BT ,\"Sell.Gif\"),DRAWICON(BUY , BT ,\"Buy.Gif\"),DRAWICON(OPENSELL, BT ,\"OpenSell.Gif\"),DRAWICON(CLOSEOPENSELL, BT ,\"CloseOpenSell.Gif\"),BT,MaxPerf";}
+			}
+		} //class _T_ZARF
+
+		[System.Serializable]
+		public class _T_RSI:FormulaBase
+		{
+			public double N=0;
+			public double UP=0;
+			public double DW=0;
+			public double OUP=0;
+			public double ODW=0;
+			public _T_RSI():base()
+			{
+				AddParam("N","14","3","8","2","",FormulaParamType.Double);
+				AddParam("UP","70","-95","95","15","",FormulaParamType.Double);
+				AddParam("DW","30","-95","95","15","",FormulaParamType.Double);
+				AddParam("OUP","70","-95","95","15","",FormulaParamType.Double);
+				AddParam("ODW","30","-95","95","15","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData BUY=CROSS(FML(DP,"RSI(N)"),DW); BUY.Name="BUY";BUY.SetAttrs("ColorDarkGreen");
+				FormulaData SELL=CROSS(UP,FML(DP,"RSI(N)")); SELL.Name="SELL";SELL.SetAttrs("ColorRed");
+				FormulaData CLOSEOPENPOSITION=CROSS(FML(DP,"RSI(N)"),ODW); CLOSEOPENPOSITION.Name="CLOSEOPENPOSITION";CLOSEOPENPOSITION.SetAttrs("ColorDarkGreen");
+				FormulaData OPENSELL=CROSS(OUP,FML(DP,"RSI(N)")); OPENSELL.Name="OPENSELL";OPENSELL.SetAttrs("ColorRed");
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,BUY,SELL,OPENSELL,CLOSEOPENPOSITION,BALANCE[0],0.000342,1,ALTBUY,ALTSELL); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(SELL , BT ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , BT ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData NONAME2=DRAWICON(OPENSELL, BT ,"OpenSell.Gif");NONAME2.SetAttrs("Top");
+				FormulaData NONAME3=DRAWICON(CLOSEOPENPOSITION, BT ,"CloseOpenSell.Gif");NONAME3.SetAttrs("Bottom");
+				FormulaData MAXPERF= (BALANCE/LLV(L))*HHV(H); MAXPERF.Name="MaxPerf";
+				FormulaData NONAME4=BT;
+				FormulaData NONAME5=MAXPERF;NONAME5.SetAttrs(" DarkGreen,Width2");
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3,NONAME4,NONAME5},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , BT ,\"Sell.Gif\"),DRAWICON(BUY , BT ,\"Buy.Gif\"),DRAWICON(OPENSELL, BT ,\"OpenSell.Gif\"),DRAWICON(CLOSEOPENPOSITION, BT ,\"CloseOpenSell.Gif\"),BT,MaxPerf";}
+			}
+		} //class _T_RSI
+
+		[System.Serializable]
+		public class A_RSI:FormulaBase
+		{
+			public double N=0;
+			public double UP=0;
+			public double DW=0;
+			public double OUP=0;
+			public double ODW=0;
+			public A_RSI():base()
+			{
+				AddParam("N","14","0","100","0","",FormulaParamType.Double);
+				AddParam("UP","70","-95","95","10","",FormulaParamType.Double);
+				AddParam("DW","30","-95","95","10","",FormulaParamType.Double);
+				AddParam("OUP","70","-95","95","10","",FormulaParamType.Double);
+				AddParam("ODW","30","-95","95","10"," ",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData BUY=CROSS(FML(DP,"RSI(N)"),DW); BUY.Name="BUY";BUY.SetAttrs("ColorDarkGreen");
+				FormulaData SELL=CROSS(UP,FML(DP,"RSI(N)")); SELL.Name="SELL";SELL.SetAttrs("ColorRed");
+				FormulaData CLOSEOPENPOSITION=CROSS(FML(DP,"RSI(N)"),ODW); CLOSEOPENPOSITION.Name="CLOSEOPENPOSITION";CLOSEOPENPOSITION.SetAttrs("ColorDarkGreen");
+				FormulaData OPENSELL=CROSS(OUP,FML(DP,"RSI(N)")); OPENSELL.Name="OPENSELL";OPENSELL.SetAttrs("ColorRed");
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData NONAME0=DRAWICON(OPENSELL, C+0.01 ,"OpenSell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(SELL , C ,"Sell.Gif");NONAME1.SetAttrs("Top");
+				FormulaData NONAME2=DRAWICON(BUY , C ,"Buy.Gif");NONAME2.SetAttrs("Bottom");
+				FormulaData NONAME3=DRAWICON(CLOSEOPENPOSITION, C-0.01 ,"CloseOpenSell.Gif");NONAME3.SetAttrs("Bottom");
+				
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(OPENSELL, C+0.01 ,\"OpenSell.Gif\"),DRAWICON(SELL , C ,\"Sell.Gif\"),DRAWICON(BUY , C ,\"Buy.Gif\"),DRAWICON(CLOSEOPENPOSITION, C-0.01 ,\"CloseOpenSell.Gif\")";}
+			}
+		} //class A_RSI
+
+		[System.Serializable]
+		public class A_RSI_AS:FormulaBase
+		{
+			public double N=0;
+			public double UP=0;
+			public double DW=0;
+			public A_RSI_AS():base()
+			{
+				AddParam("N","14","1","100","0","",FormulaParamType.Double);
+				AddParam("UP","70","-100","100","0","",FormulaParamType.Double);
+				AddParam("DW","30","-95","95","5","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData BUY=CROSS(FML(DP,"RSI(N)"),DW); BUY.Name="BUY";BUY.SetAttrs("ColorDarkGreen");
+				FormulaData SELL=CROSS(UP,FML(DP,"RSI(N)")); SELL.Name="SELL";SELL.SetAttrs("ColorRed");
+				FormulaData ALTBUY=EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,BUY,SELL,0,0,BALANCE[0],0.000342,1,ALTBUY,ALTSELL); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(SELL , C ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , C ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData NONAME2=DRAWICON(ALTSELL , C ,"AltSell.Gif");NONAME2.SetAttrs("Top");
+				FormulaData NONAME3=DRAWICON(ALTBUY , C ,"AltBuy.Gif");NONAME3.SetAttrs("Bottom");
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "RSI Trading System Sadece normal Al-Sat Arrows";}
+			}
+		
+			public override string Description
+			{
+				get{return "RSI Trading system";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , C ,\"Sell.Gif\"),DRAWICON(BUY , C ,\"Buy.Gif\"),DRAWICON(ALTSELL , C ,\"AltSell.Gif\"),DRAWICON(ALTBUY , C ,\"AltBuy.Gif\")";}
+			}
+		} //class A_RSI_AS
+
+		[System.Serializable]
+		public class A_RSI_OS:FormulaBase
+		{
+			public double N=0;
+			public double OUP=0;
+			public double ODW=0;
+			public A_RSI_OS():base()
+			{
+				AddParam("N","3","3","8","2","",FormulaParamType.Double);
+				AddParam("OUP","70","-95","95","5","",FormulaParamType.Double);
+				AddParam("ODW","30","-95","95","5","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData CLOSEOPENPOSITION=CROSS(FML(DP,"RSI(N)"),ODW); CLOSEOPENPOSITION.Name="CLOSEOPENPOSITION";CLOSEOPENPOSITION.SetAttrs("ColorDarkGreen");
+				FormulaData OPENSELL=CROSS(OUP,FML(DP,"RSI(N)")); OPENSELL.Name="OPENSELL";OPENSELL.SetAttrs("ColorRed");
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData NONAME0=DRAWICON(OPENSELL, C ,"OpenSell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(CLOSEOPENPOSITION, C ,"CloseOpenSell.Gif");NONAME1.SetAttrs("Bottom");
+				
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "RSI Trading System Sadece Açığa satış arrows";}
+			}
+		
+			public override string Description
+			{
+				get{return "RSI Trading system";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(OPENSELL, C ,\"OpenSell.Gif\"),DRAWICON(CLOSEOPENPOSITION, C ,\"CloseOpenSell.Gif\")";}
+			}
+		} //class A_RSI_OS
+
+		[System.Serializable]
+		public class A_Zarf:FormulaBase
+		{
+			public double OPT1=0;
+			public double OPT2=0;
+			public double OPT3=0;
+			public A_Zarf():base()
+			{
+				AddParam("OPT1","3","3","4","1","",FormulaParamType.Double);
+				AddParam("OPT2","11","11","12","1","",FormulaParamType.Double);
+				AddParam("OPT3","3","3","4","1","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData SIS=FML(DP,"MACD(26,12,9)"); SIS.Name="SIS";
+				FormulaData YUKARI=CROSS(SIS,0); YUKARI.Name="Yukari";
+				FormulaData ASAGI=CROSS(0,SIS); ASAGI.Name="Asagi";
+				FormulaData YTREND=SIS>0; YTREND.Name="Ytrend";
+				FormulaData ATREND=SIS<0; ATREND.Name="Atrend";
+				FormulaData YREF=REF(L,-1); YREF.Name="YRef";
+				FormulaData AREF=REF(H,-1); AREF.Name="ARef";
+				FormulaData SOYN=REF(FML(DP,"ATR(14)"),-1); SOYN.Name="sOyn";
+				FormulaData SYKAL=2-REF(FML(DP,"VHF(C,14)"),-1); SYKAL.Name="sYKal";
+				FormulaData SAKAL= 2-REF(FML(DP,"VHF(C,14)"),-1); SAKAL.Name="sAkal";
+				FormulaData SYSTP=YREF-SOYN*SYKAL; SYSTP.Name="sYstp";
+				FormulaData SASTP=AREF+SOYN*SAKAL; SASTP.Name="sAstp";
+				FormulaData STT=IF(YTREND,HIGHESTSINCE(1,YUKARI,SYSTP), LOWESTSINCE(1,ASAGI,SASTP)); STT.Name="sTT";
+				FormulaData SYT=IF(YTREND & C>STT ,STT,PREV); SYT.Name="sYT";
+				FormulaData SAT=IF(ATREND & C<STT ,STT,PREV); SAT.Name="sAT";
+				FormulaData SARI=IF(YTREND,SYT,SAT); SARI.Name="SARI";
+				FormulaData TR=RSQUARED(C,14); TR.Name="TR";
+				FormulaData TRM=MOV(TR,9,S); TRM.Name="TRM";
+				FormulaData YATAY=4/10; YATAY.Name="Yatay";
+				FormulaData YTG= CROSS(YATAY,TR) | (TR>YATAY & CROSS(TRM,TR) ); YTG.Name="YTG";
+				FormulaData YTC=TR>TRM & TR>YATAY; YTC.Name="YTC";
+				FormulaData YTY=BARSSINCE(YTG)<BARSSINCE(YTC); YTY.Name="YTY";
+				FormulaData FARK=(1+TR)*REF(MOV(MAX(O,C)-MIN(O,C),14,S),-1); FARK.Name="Fark";
+				FormulaData HX=REF(MOV(MAX(O,C)+FARK,5,S),-1); HX.Name="HX";
+				FormulaData LX=REF(MOV(MIN(O,C)-FARK,5,S),-1); LX.Name="LX";
+				FormulaData HS=IF(TR>YATAY & TR>TRM, LOWESTSINCE(1,YTC,HX), VALUEWHEN(1,YTG,HX)); HS.Name="HS";
+				FormulaData LS=IF(TR>YATAY & TR>TRM, HIGHESTSINCE(1,YTC,LX), VALUEWHEN(1,YTG,LX)); LS.Name="LS";
+				FormulaData HXX=MAX(HS,SARI); HXX.Name="HXX";
+				FormulaData LXX=MIN(LS,SARI); LXX.Name="LXX";
+				FormulaData P1=OPT1; P1.Name="p1";
+				FormulaData P2=OPT2; P2.Name="p2";
+				FormulaData R1=1; R1.Name="r1";
+				FormulaData P3=P2; P3.Name="p3";
+				FormulaData YY=OPT3; YY.Name="yy";
+				FormulaData AA=MOV(C,P1,W); AA.Name="AA";
+				FormulaData BB=MOV(AA,P2,W); BB.Name="BB";
+				FormulaData XAA=AA - REF(AA,-R1); XAA.Name="XAA";
+				FormulaData XBB=BB - REF(BB,-R1); XBB.Name="XBB";
+				FormulaData XAB= ABS(AA - BB); XAB.Name="XAB";
+				FormulaData OAB= (XAA+XBB)/2; OAB.Name="OAB";
+				FormulaData PP= XAB* OAB * OAB* OAB; PP.Name="PP";
+				FormulaData XPP=100*PP/HHV(ABS(PP),P3); XPP.Name="XPP";
+				FormulaData YUZDE=1000*(HXX-LXX)/LXX; YUZDE.Name="Yuzde";
+				FormulaData BUY=C>HXX; BUY.Name="BUY";BUY.SetAttrs("ColorDarkGreen");
+				FormulaData SELL=C<LXX; SELL.Name="SELL";SELL.SetAttrs(" ColorRed");
+				FormulaData OPENSELL=C<LXX; OPENSELL.Name="OPENSELL";OPENSELL.SetAttrs("ColorDarkOrange");
+				FormulaData CLOSEOPENSELL=C>HXX; CLOSEOPENSELL.Name="CLOSEOPENSELL";CLOSEOPENSELL.SetAttrs(" ColorDarkViolet");
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData NONAME0=DRAWICON(SELL , C ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , C ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData NONAME2=DRAWICON(OPENSELL, C ,"OpenSell.Gif");NONAME2.SetAttrs("Top");
+				FormulaData NONAME3=DRAWICON(CLOSEOPENSELL, C ,"CloseOpenSell.Gif");NONAME3.SetAttrs("Bottom");
+				
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "Zarf arrows";}
+			}
+		
+			public override string Description
+			{
+				get{return "";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , C ,\"Sell.Gif\"),DRAWICON(BUY , C ,\"Buy.Gif\"),DRAWICON(OPENSELL, C ,\"OpenSell.Gif\"),DRAWICON(CLOSEOPENSELL, C ,\"CloseOpenSell.Gif\")";}
+			}
+		} //class A_Zarf
+
+		[System.Serializable]
+		public class _T_MA_R1:FormulaBase
+		{
+			public double N=0;
+			public double M=0;
+			public _T_MA_R1():base()
+			{
+				AddParam("N","5","3","200","1","",FormulaParamType.Double);
+				AddParam("M","5","3","200","1","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData BUY=CROSS(C,FML(DP,"MA(N)")); BUY.Name="BUY";
+				FormulaData SELL=CROSS(FML(DP,"MA(M)"),C); SELL.Name="SELL";
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,BUY,SELL,0,0,BALANCE[0],0.000342,1,ALTBUY,ALTSELL); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(SELL , BT ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , BT ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData MAXPERF= (BALANCE/LLV(L))*HHV(H); MAXPERF.Name="MaxPerf";
+				FormulaData NONAME2=BT;
+				FormulaData NONAME3=MAXPERF;NONAME3.SetAttrs(" DarkGreen,Width2");
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "Fiyatla kesişen en iyi hareketli ortalama değerleri için farklı kesişim tanımı";}
+			}
+		
+			public override string Description
+			{
+				get{return "Fiyat yukarı kesince alınır. Aşağı kesince satılır.\n\n";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , BT ,\"Sell.Gif\"),DRAWICON(BUY , BT ,\"Buy.Gif\"),BT,MaxPerf";}
+			}
+		} //class _T_MA_R1
+
+		[System.Serializable]
+		public class A_MA_R1:FormulaBase
+		{
+			public double N=0;
+			public double M=0;
+			public A_MA_R1():base()
+			{
+				AddParam("N","5","3","200","1","",FormulaParamType.Double);
+				AddParam("M","5","3","200","1","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData BUY=CROSS(C,FML(DP,"MA(N)")); BUY.Name="BUY";
+				FormulaData SELL=CROSS(FML(DP,"MA(M)"),C); SELL.Name="SELL";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData NONAME0=DRAWICON(SELL , C ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , C ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "Hareketli ortalama sistemi Arrows";}
+			}
+		
+			public override string Description
+			{
+				get{return "";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , C ,\"Sell.Gif\"),DRAWICON(BUY , C ,\"Buy.Gif\")";}
+			}
+		} //class A_MA_R1
+
+		[System.Serializable]
+		public class _T_MA_O:FormulaBase
+		{
+			public double N=0;
+			public double M=0;
+			public _T_MA_O():base()
+			{
+				AddParam("N","5","3","200","1","",FormulaParamType.Double);
+				AddParam("M","5","3","200","1","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData CLOSEOPENPOSITION=CROSS(C,FML(DP,"MA(N)")); CLOSEOPENPOSITION.Name="CLOSEOPENPOSITION";
+				FormulaData OPENSELL=CROSS(FML(DP,"MA(M)"),C); OPENSELL.Name="OPENSELL";
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,0,0,OPENSELL,CLOSEOPENPOSITION,BALANCE[0],0.000342,1,ALTBUY,ALTSELL); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(OPENSELL , BT ,"OpenSell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(CLOSEOPENPOSITION , BT ,"CloseOpenSell.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData MAXPERF= (BALANCE/LLV(L))*HHV(H); MAXPERF.Name="MaxPerf";
+				FormulaData NONAME2=BT;
+				FormulaData NONAME3=MAXPERF;NONAME3.SetAttrs(" DarkGreen,Width2");
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "Açığa satış MA sistemi.";}
+			}
+		
+			public override string Description
+			{
+				get{return "";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(OPENSELL , BT ,\"OpenSell.Gif\"),DRAWICON(CLOSEOPENPOSITION , BT ,\"CloseOpenSell.Gif\"),BT,MaxPerf";}
+			}
+		} //class _T_MA_O
+
+		[System.Serializable]
+		public class A_MA_O:FormulaBase
+		{
+			public double N=0;
+			public double M=0;
+			public A_MA_O():base()
+			{
+				AddParam("N","5","1","100","1","",FormulaParamType.Double);
+				AddParam("M","5","1","100","1","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData CLOSEOPENPOSITION=CROSS(C,FML(DP,"MA(N)")); CLOSEOPENPOSITION.Name="CLOSEOPENPOSITION";
+				FormulaData OPENSELL=CROSS(FML(DP,"MA(M)"),C); OPENSELL.Name="OPENSELL";
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,0,0,OPENSELL,CLOSEOPENPOSITION,BALANCE[0],0.000342,1,ALTBUY,ALTSELL); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(OPENSELL , C ,"OpenSell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(CLOSEOPENPOSITION , C ,"CloseOpenSell.Gif");NONAME1.SetAttrs("Bottom");
+				
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(OPENSELL , C ,\"OpenSell.Gif\"),DRAWICON(CLOSEOPENPOSITION , C ,\"CloseOpenSell.Gif\")";}
+			}
+		} //class A_MA_O
+
+		[System.Serializable]
+		public class _T_MA_TRIPLE:FormulaBase
+		{
+			public double T=0;
+			public double N=0;
+			public double M=0;
+			public _T_MA_TRIPLE():base()
+			{
+				AddParam("T","5","3","14","1","",FormulaParamType.Double);
+				AddParam("N","5","3","200","1","",FormulaParamType.Double);
+				AddParam("M","5","3","200","1","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData MAN=MA(C,N); MAN.Name="MAN";
+				FormulaData MAM=MA(C,M); MAM.Name="MAM";
+				FormulaData MAT=MA(C,T); MAT.Name="MAT";
+				FormulaData BUY=CROSS(MAT,MAN); BUY.Name="BUY";
+				FormulaData SELL=CROSS(MAM,MAT); SELL.Name="SELL";
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,BUY,SELL,0,0,BALANCE[0],0.000342,1,ALTBUY,ALTSELL); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(SELL , BT ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , BT ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData MAXPERF= (BALANCE/LLV(L))*HHV(H); MAXPERF.Name="MaxPerf";
+				FormulaData NONAME2=BT;
+				FormulaData NONAME3=MAXPERF;NONAME3.SetAttrs(" DarkGreen,Width2");
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , BT ,\"Sell.Gif\"),DRAWICON(BUY , BT ,\"Buy.Gif\"),BT,MaxPerf";}
+			}
+		} //class _T_MA_TRIPLE
+
+		[System.Serializable]
+		public class A_MA_TRIPLE:FormulaBase
+		{
+			public double T=0;
+			public double N=0;
+			public double M=0;
+			public A_MA_TRIPLE():base()
+			{
+				AddParam("T","5","3","14","3","",FormulaParamType.Double);
+				AddParam("N","5","3","200","3","",FormulaParamType.Double);
+				AddParam("M","5","3","200","3","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData MAN=MA(C,N); MAN.Name="MAN";
+				FormulaData MAM=MA(C,M); MAM.Name="MAM";
+				FormulaData MAT=MA(C,T); MAT.Name="MAT";
+				FormulaData BUY=CROSS(MAT,MAN); BUY.Name="BUY";
+				FormulaData SELL=CROSS(MAM,MAT); SELL.Name="SELL";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData NONAME0=DRAWICON(SELL , C ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , C ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , C ,\"Sell.Gif\"),DRAWICON(BUY , C ,\"Buy.Gif\")";}
+			}
+		} //class A_MA_TRIPLE
+
+		[System.Serializable]
+		public class _T_SAR_AS:FormulaBase
+		{
+			public double N=0;
+			public double STEP=0;
+			public double MAXP=0;
+			public _T_SAR_AS():base()
+			{
+				AddParam("N","2","1","100","2","",FormulaParamType.Double);
+				AddParam("STEP","2","1","100","2","",FormulaParamType.Double);
+				AddParam("MAXP","2","1","100","2","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData BUY=SARTURN(N,STEP,MAXP)==1; BUY.Name="BUY";
+				FormulaData SELL=SARTURN(N,STEP,MAXP)==-1; SELL.Name="SELL";SELL.SetAttrs("ColorRed");
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,BUY,SELL,0,0,BALANCE[0],0.000342,1,ALTBUY,ALTSELL); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(SELL , BT ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , BT ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData MAXPERF= (BALANCE/LLV(L))*HHV(H); MAXPERF.Name="MaxPerf";
+				FormulaData NONAME2=BT;
+				FormulaData NONAME3=MAXPERF;NONAME3.SetAttrs(" DarkGreen,Width2");
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "RSI Trading system\n\n\n\n\n";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , BT ,\"Sell.Gif\"),DRAWICON(BUY , BT ,\"Buy.Gif\"),BT,MaxPerf";}
+			}
+		} //class _T_SAR_AS
+
+		[System.Serializable]
+		public class A_SAR_AS:FormulaBase
+		{
+			public double N=0;
+			public double STEP=0;
+			public double MAXP=0;
+			public A_SAR_AS():base()
+			{
+				AddParam("N","2","1","100","1","",FormulaParamType.Double);
+				AddParam("STEP","2","1","100","1","",FormulaParamType.Double);
+				AddParam("MAXP","2","1","100","1","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData BUY=SARTURN(N,STEP,MAXP)==1; BUY.Name="BUY";
+				FormulaData SELL=SARTURN(N,STEP,MAXP)==-1; SELL.Name="SELL";SELL.SetAttrs("ColorRed");
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,BUY,SELL,0,0,BALANCE[0],0.000342,1,ALTBUY,ALTSELL); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(SELL , C ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , C ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData NONAME2=DRAWICON(ALTSELL , C ,"AltSell.Gif");NONAME2.SetAttrs("Top");
+				FormulaData NONAME3=DRAWICON(ALTBUY , C ,"AltBuy.Gif");NONAME3.SetAttrs("Bottom");
+				
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "RSI Trading system\n\n\n\n\n";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , C ,\"Sell.Gif\"),DRAWICON(BUY , C ,\"Buy.Gif\"),DRAWICON(ALTSELL , C ,\"AltSell.Gif\"),DRAWICON(ALTBUY , C ,\"AltBuy.Gif\")";}
+			}
+		} //class A_SAR_AS
+
+		[System.Serializable]
+		public class _T_SAR_SA:FormulaBase
+		{
+			public double N=0;
+			public double STEP=0;
+			public double MAXP=0;
+			public _T_SAR_SA():base()
+			{
+				AddParam("N","2","1","100","2","",FormulaParamType.Double);
+				AddParam("STEP","2","1","100","2","",FormulaParamType.Double);
+				AddParam("MAXP","2","1","100","2","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData CLOSEOPENPOSITION=SARTURN(N,STEP,MAXP)==1; CLOSEOPENPOSITION.Name="CLOSEOPENPOSITION";
+				FormulaData OPENSELL=SARTURN(N,STEP,MAXP)==-1; OPENSELL.Name="OPENSELL";OPENSELL.SetAttrs("ColorRed");
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,0,0,OPENSELL,CLOSEOPENPOSITION,BALANCE[0],0.000342,1,ALTBUY,ALTSELL); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(OPENSELL , BT ,"OpenSell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(CLOSEOPENPOSITION, BT ,"CloseOpenSell.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData MAXPERF= (BALANCE/LLV(L))*HHV(H); MAXPERF.Name="MaxPerf";
+				FormulaData NONAME2=BT;
+				FormulaData NONAME3=MAXPERF;NONAME3.SetAttrs(" DarkGreen,Width2");
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "RSI Trading system\n\n\n\n\n";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(OPENSELL , BT ,\"OpenSell.Gif\"),DRAWICON(CLOSEOPENPOSITION, BT ,\"CloseOpenSell.Gif\"),BT,MaxPerf";}
+			}
+		} //class _T_SAR_SA
+
+		[System.Serializable]
+		public class A_SAR_SA:FormulaBase
+		{
+			public double N=0;
+			public double STEP=0;
+			public double MAXP=0;
+			public A_SAR_SA():base()
+			{
+				AddParam("N","2","1","100","2","",FormulaParamType.Double);
+				AddParam("STEP","2","1","100","2","",FormulaParamType.Double);
+				AddParam("MAXP","2","1","100","2","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData CLOSEOPENPOSITION=SARTURN(N,STEP,MAXP)==1; CLOSEOPENPOSITION.Name="CLOSEOPENPOSITION";
+				FormulaData OPENSELL=SARTURN(N,STEP,MAXP)==-1; OPENSELL.Name="OPENSELL";OPENSELL.SetAttrs("ColorRed");
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData NONAME0=DRAWICON(OPENSELL , C ,"OpenSell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(CLOSEOPENPOSITION, C ,"CloseOpenSell.Gif");NONAME1.SetAttrs("Bottom");
+				
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "RSI Trading system\n\n\n\n\n";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(OPENSELL , C ,\"OpenSell.Gif\"),DRAWICON(CLOSEOPENPOSITION, C ,\"CloseOpenSell.Gif\")";}
+			}
+		} //class A_SAR_SA
+
+		[System.Serializable]
+		public class _T_RSI_E:FormulaBase
+		{
+			public double N=0;
+			public double UP=0;
+			public double DW=0;
+			public double OUP=0;
+			public double ODW=0;
+			public double N1=0;
+			public double UP1=0;
+			public double DW1=0;
+			public _T_RSI_E():base()
+			{
+				AddParam("N","7","6","8","1","",FormulaParamType.Double);
+				AddParam("UP","70","62","76","2","",FormulaParamType.Double);
+				AddParam("DW","25","19","29","2","",FormulaParamType.Double);
+				AddParam("OUP","-5","-10","0","3","",FormulaParamType.Double);
+				AddParam("ODW","-67","-69","-59","2","",FormulaParamType.Double);
+				AddParam("N1","3","2","4","1","",FormulaParamType.Double);
+				AddParam("UP1","-80","-84","-76","2","",FormulaParamType.Double);
+				AddParam("DW1","5","1","9","2","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData BUY=CROSS(FML(DP,"RSI(N)"),DW) | CROSS(FML(DP,"RSI(N1)"),DW1) ; BUY.Name="BUY";BUY.SetAttrs("ColorDarkGreen");
+				FormulaData SELL=CROSS(UP,FML(DP,"RSI(N)")) | CROSS(UP1,FML(DP,"RSI(N1)")); SELL.Name="SELL";SELL.SetAttrs("ColorRed");
+				FormulaData CLOSEOPENPOSITION=CROSS(FML(DP,"RSI(N)"),ODW); CLOSEOPENPOSITION.Name="CLOSEOPENPOSITION";CLOSEOPENPOSITION.SetAttrs("ColorDarkGreen");
+				FormulaData OPENSELL=CROSS(OUP,FML(DP,"RSI(N)")); OPENSELL.Name="OPENSELL";OPENSELL.SetAttrs("ColorRed");
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,BUY,SELL,OPENSELL,CLOSEOPENPOSITION,BALANCE[0],0.000342,1,ALTBUY,ALTSELL); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(SELL , BT ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , BT ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData NONAME2=DRAWICON(OPENSELL, BT ,"OpenSell.Gif");NONAME2.SetAttrs("Top");
+				FormulaData NONAME3=DRAWICON(CLOSEOPENPOSITION, BT ,"CloseOpenSell.Gif");NONAME3.SetAttrs("Bottom");
+				FormulaData AMT= BALANCE/C[0]; AMT.Name="AMT";
+				FormulaData MAXPERF= (BALANCE/LLV(L))*HHV(H); MAXPERF.Name="MaxPerf";
+				FormulaData NONAME4=BT;
+				FormulaData NONAME5=MAXPERF;NONAME5.SetAttrs(" DarkGreen,Width2");
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3,NONAME4,NONAME5},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , BT ,\"Sell.Gif\"),DRAWICON(BUY , BT ,\"Buy.Gif\"),DRAWICON(OPENSELL, BT ,\"OpenSell.Gif\"),DRAWICON(CLOSEOPENPOSITION, BT ,\"CloseOpenSell.Gif\"),BT,MaxPerf";}
+			}
+		} //class _T_RSI_E
+
+		[System.Serializable]
+		public class A_RSI_E:FormulaBase
+		{
+			public double N=0;
+			public double UP=0;
+			public double DW=0;
+			public double OUP=0;
+			public double ODW=0;
+			public double N1=0;
+			public double UP1=0;
+			public double DW1=0;
+			public A_RSI_E():base()
+			{
+				AddParam("N","7","0","100","0","",FormulaParamType.Double);
+				AddParam("UP","70","-100","100","0","",FormulaParamType.Double);
+				AddParam("DW","25","-100","100","0","",FormulaParamType.Double);
+				AddParam("OUP","-5","-100","100","0","",FormulaParamType.Double);
+				AddParam("ODW","-65","-100","100","0","",FormulaParamType.Double);
+				AddParam("N1","3","0","100","0","",FormulaParamType.Double);
+				AddParam("UP1","-80","-100","100","0","",FormulaParamType.Double);
+				AddParam("DW1","5","-100","100","0","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData BUY=CROSS(FML(DP,"RSI(N)"),DW) | CROSS(FML(DP,"RSI(N1)"),DW1) ; BUY.Name="BUY";BUY.SetAttrs("ColorDarkGreen");
+				FormulaData SELL=CROSS(UP,FML(DP,"RSI(N)")) | CROSS(UP1,FML(DP,"RSI(N1)")); SELL.Name="SELL";SELL.SetAttrs("ColorRed");
+				FormulaData CLOSEOPENPOSITION=CROSS(FML(DP,"RSI(N)"),ODW); CLOSEOPENPOSITION.Name="CLOSEOPENPOSITION";CLOSEOPENPOSITION.SetAttrs("ColorDarkGreen");
+				FormulaData OPENSELL=CROSS(OUP,FML(DP,"RSI(N)")); OPENSELL.Name="OPENSELL";OPENSELL.SetAttrs("ColorRed");
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData NONAME0=DRAWICON(SELL , C ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , C ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData NONAME2=DRAWICON(OPENSELL, C ,"OpenSell.Gif");NONAME2.SetAttrs("Top");
+				FormulaData NONAME3=DRAWICON(CLOSEOPENPOSITION, C ,"CloseOpenSell.Gif");NONAME3.SetAttrs("Bottom");
+				
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , C ,\"Sell.Gif\"),DRAWICON(BUY , C ,\"Buy.Gif\"),DRAWICON(OPENSELL, C ,\"OpenSell.Gif\"),DRAWICON(CLOSEOPENPOSITION, C ,\"CloseOpenSell.Gif\")";}
+			}
+		} //class A_RSI_E
+
+		[System.Serializable]
+		public class _T_RSI_ESL:FormulaBase
+		{
+			public double N=0;
+			public double UP=0;
+			public double DW=0;
+			public double OUP=0;
+			public double ODW=0;
+			public double N1=0;
+			public double UP1=0;
+			public double DW1=0;
+			public double SL=0;
+			public _T_RSI_ESL():base()
+			{
+				AddParam("N","7","6","8","1","",FormulaParamType.Double);
+				AddParam("UP","70","62","76","2","",FormulaParamType.Double);
+				AddParam("DW","25","19","29","2","",FormulaParamType.Double);
+				AddParam("OUP","-5","-10","0","3","",FormulaParamType.Double);
+				AddParam("ODW","-67","-69","-59","2","",FormulaParamType.Double);
+				AddParam("N1","3","2","4","1","",FormulaParamType.Double);
+				AddParam("UP1","-80","-84","-76","2","",FormulaParamType.Double);
+				AddParam("DW1","5","1","9","2","",FormulaParamType.Double);
+				AddParam("SL","0","0.0","100","0","Stop Loss Parametresi. Step 0 verilmek zorundadır.",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData BUY=CROSS(FML(DP,"RSI(N)"),DW) | CROSS(FML(DP,"RSI(N1)"),DW1) ; BUY.Name="BUY";BUY.SetAttrs("ColorDarkGreen");
+				FormulaData SELL=CROSS(UP,FML(DP,"RSI(N)")) | CROSS(UP1,FML(DP,"RSI(N1)")); SELL.Name="SELL";SELL.SetAttrs("ColorRed");
+				FormulaData CLOSEOPENPOSITION=CROSS(FML(DP,"RSI(N)"),ODW); CLOSEOPENPOSITION.Name="CLOSEOPENPOSITION";CLOSEOPENPOSITION.SetAttrs("ColorDarkGreen");
+				FormulaData OPENSELL=CROSS(OUP,FML(DP,"RSI(N)")); OPENSELL.Name="OPENSELL";OPENSELL.SetAttrs("ColorRed");
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData STOPLOSS=EMPTY; STOPLOSS.Name="STOPLOSS";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,BUY,SELL,OPENSELL,CLOSEOPENPOSITION,BALANCE[0],0.000342,1,ALTBUY,ALTSELL,SL,STOPLOSS); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(SELL , BT ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , BT ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData NONAME2=DRAWICON(OPENSELL, BT ,"OpenSell.Gif");NONAME2.SetAttrs("Top");
+				FormulaData NONAME3=DRAWICON(CLOSEOPENPOSITION, BT ,"CloseOpenSell.Gif");NONAME3.SetAttrs("Bottom");
+				FormulaData STOPBUYS= STOPLOSS>0; STOPBUYS.Name="STOPBUYS";
+				FormulaData STOPSELLS=STOPLOSS<0; STOPSELLS.Name="STOPSELLS";
+				FormulaData NONAME4=DRAWICON(STOPSELLS , BT ,"StopSell.Gif");NONAME4.SetAttrs("Top");
+				FormulaData NONAME5=DRAWICON(STOPBUYS , BT ,"StopBuy.Gif");NONAME5.SetAttrs("Bottom");
+				FormulaData AMT= BALANCE/C[0]; AMT.Name="AMT";
+				FormulaData MAXPERF= (BALANCE/LLV(L))*HHV(H); MAXPERF.Name="MaxPerf";
+				FormulaData NONAME6=BT;
+				FormulaData NONAME7=MAXPERF;NONAME7.SetAttrs(" DarkGreen,Width2");
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3,NONAME4,NONAME5,NONAME6,NONAME7},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , BT ,\"Sell.Gif\"),DRAWICON(BUY , BT ,\"Buy.Gif\"),DRAWICON(OPENSELL, BT ,\"OpenSell.Gif\"),DRAWICON(CLOSEOPENPOSITION, BT ,\"CloseOpenSell.Gif\"),DRAWICON(STOPSELLS , BT ,\"StopSell.Gif\"),DRAWICON(STOPBUYS , BT ,\"StopBuy.Gif\"),BT,MaxPerf";}
+			}
+		} //class _T_RSI_ESL
+
+		[System.Serializable]
+		public class A_RSI_ESL:FormulaBase
+		{
+			public double N=0;
+			public double UP=0;
+			public double DW=0;
+			public double OUP=0;
+			public double ODW=0;
+			public double N1=0;
+			public double UP1=0;
+			public double DW1=0;
+			public double SL=0;
+			public A_RSI_ESL():base()
+			{
+				AddParam("N","7","6","8","1","",FormulaParamType.Double);
+				AddParam("UP","70","62","76","2","",FormulaParamType.Double);
+				AddParam("DW","25","19","29","2","",FormulaParamType.Double);
+				AddParam("OUP","-5","-10","0","3","",FormulaParamType.Double);
+				AddParam("ODW","-67","-69","-59","2","",FormulaParamType.Double);
+				AddParam("N1","3","2","4","1","",FormulaParamType.Double);
+				AddParam("UP1","-80","-84","-76","2","",FormulaParamType.Double);
+				AddParam("DW1","5","1","9","2","",FormulaParamType.Double);
+				AddParam("SL","0","0.0","100","0","Stop Loss Parametresi. Step 0 verilmek zorundadır.",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData BUY=CROSS(FML(DP,"RSI(N)"),DW) | CROSS(FML(DP,"RSI(N1)"),DW1) ; BUY.Name="BUY";BUY.SetAttrs("ColorDarkGreen");
+				FormulaData SELL=CROSS(UP,FML(DP,"RSI(N)")) | CROSS(UP1,FML(DP,"RSI(N1)")); SELL.Name="SELL";SELL.SetAttrs("ColorRed");
+				FormulaData CLOSEOPENPOSITION=CROSS(FML(DP,"RSI(N)"),ODW); CLOSEOPENPOSITION.Name="CLOSEOPENPOSITION";CLOSEOPENPOSITION.SetAttrs("ColorDarkGreen");
+				FormulaData OPENSELL=CROSS(OUP,FML(DP,"RSI(N)")); OPENSELL.Name="OPENSELL";OPENSELL.SetAttrs("ColorRed");
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData STOPLOSS=EMPTY; STOPLOSS.Name="STOPLOSS";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,BUY,SELL,OPENSELL,CLOSEOPENPOSITION,BALANCE[0],0.000342,1,ALTBUY,ALTSELL,SL,STOPLOSS); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(SELL , C ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , C ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData NONAME2=DRAWICON(OPENSELL, C ,"OpenSell.Gif");NONAME2.SetAttrs("Top");
+				FormulaData NONAME3=DRAWICON(CLOSEOPENPOSITION, C ,"CloseOpenSell.Gif");NONAME3.SetAttrs("Bottom");
+				FormulaData STOPBUYS= STOPLOSS>0; STOPBUYS.Name="STOPBUYS";
+				FormulaData STOPSELLS=STOPLOSS<0; STOPSELLS.Name="STOPSELLS";
+				FormulaData NONAME4=DRAWICON(STOPSELLS , C,"StopSell.Gif");NONAME4.SetAttrs("Top");
+				FormulaData NONAME5=DRAWICON(STOPBUYS , C ,"StopBuy.Gif");NONAME5.SetAttrs("Bottom");
+				
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3,NONAME4,NONAME5},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , C ,\"Sell.Gif\"),DRAWICON(BUY , C ,\"Buy.Gif\"),DRAWICON(OPENSELL, C ,\"OpenSell.Gif\"),DRAWICON(CLOSEOPENPOSITION, C ,\"CloseOpenSell.Gif\"),DRAWICON(STOPSELLS , C,\"StopSell.Gif\"),DRAWICON(STOPBUYs , C ,\"StopBuy.Gif\")";}
+			}
+		} //class A_RSI_ESL
+
+		[System.Serializable]
+		public class _T_RSISL:FormulaBase
+		{
+			public double N=0;
+			public double UP=0;
+			public double DW=0;
+			public double OUP=0;
+			public double ODW=0;
+			public double SL=0;
+			public _T_RSISL():base()
+			{
+				AddParam("N","14","3","8","2","",FormulaParamType.Double);
+				AddParam("UP","70","-95","95","15","",FormulaParamType.Double);
+				AddParam("DW","30","-95","95","15","",FormulaParamType.Double);
+				AddParam("OUP","70","-95","95","15","",FormulaParamType.Double);
+				AddParam("ODW","30","-95","95","15","",FormulaParamType.Double);
+				AddParam("SL","0","0","100","0","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData BUY=CROSS(FML(DP,"RSI(N)"),DW); BUY.Name="BUY";BUY.SetAttrs("ColorDarkGreen");
+				FormulaData SELL=CROSS(UP,FML(DP,"RSI(N)")); SELL.Name="SELL";SELL.SetAttrs("ColorRed");
+				FormulaData CLOSEOPENPOSITION=CROSS(FML(DP,"RSI(N)"),ODW); CLOSEOPENPOSITION.Name="CLOSEOPENPOSITION";CLOSEOPENPOSITION.SetAttrs("ColorDarkGreen");
+				FormulaData OPENSELL=CROSS(OUP,FML(DP,"RSI(N)")); OPENSELL.Name="OPENSELL";OPENSELL.SetAttrs("ColorRed");
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData STOPLOSS=EMPTY; STOPLOSS.Name="STOPLOSS";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,BUY,SELL,OPENSELL,CLOSEOPENPOSITION,BALANCE[0],0.000342,1,ALTBUY,ALTSELL,SL,STOPLOSS); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(SELL , BT ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , BT ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData NONAME2=DRAWICON(OPENSELL, BT ,"OpenSell.Gif");NONAME2.SetAttrs("Top");
+				FormulaData NONAME3=DRAWICON(CLOSEOPENPOSITION, BT ,"CloseOpenSell.Gif");NONAME3.SetAttrs("Bottom");
+				FormulaData STOPBUYS= STOPLOSS>0; STOPBUYS.Name="STOPBUYS";
+				FormulaData STOPSELLS=STOPLOSS<0; STOPSELLS.Name="STOPSELLS";
+				FormulaData NONAME4=DRAWICON(STOPSELLS , BT ,"StopSell.Gif");NONAME4.SetAttrs("Top");
+				FormulaData NONAME5=DRAWICON(STOPBUYS , BT ,"StopBuy.Gif");NONAME5.SetAttrs("Bottom");
+				FormulaData MAXPERF= (BALANCE/LLV(L))*HHV(H); MAXPERF.Name="MaxPerf";
+				FormulaData NONAME6=BT;
+				FormulaData NONAME7=MAXPERF;NONAME7.SetAttrs(" DarkGreen,Width2");
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3,NONAME4,NONAME5,NONAME6,NONAME7},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , BT ,\"Sell.Gif\"),DRAWICON(BUY , BT ,\"Buy.Gif\"),DRAWICON(OPENSELL, BT ,\"OpenSell.Gif\"),DRAWICON(CLOSEOPENPOSITION, BT ,\"CloseOpenSell.Gif\"),DRAWICON(STOPSELLS , BT ,\"StopSell.Gif\"),DRAWICON(STOPBUYS , BT ,\"StopBuy.Gif\"),BT,MaxPerf";}
+			}
+		} //class _T_RSISL
+
+		[System.Serializable]
+		public class A_RSISL:FormulaBase
+		{
+			public double N=0;
+			public double UP=0;
+			public double DW=0;
+			public double OUP=0;
+			public double ODW=0;
+			public double SL=0;
+			public A_RSISL():base()
+			{
+				AddParam("N","14","3","8","2","",FormulaParamType.Double);
+				AddParam("UP","70","-95","95","15","",FormulaParamType.Double);
+				AddParam("DW","30","-95","95","15","",FormulaParamType.Double);
+				AddParam("OUP","70","-95","95","15","",FormulaParamType.Double);
+				AddParam("ODW","30","-95","95","15","",FormulaParamType.Double);
+				AddParam("SL","0","0","100","0","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData BUY=CROSS(FML(DP,"RSI(N)"),DW); BUY.Name="BUY";BUY.SetAttrs("ColorDarkGreen");
+				FormulaData SELL=CROSS(UP,FML(DP,"RSI(N)")); SELL.Name="SELL";SELL.SetAttrs("ColorRed");
+				FormulaData CLOSEOPENPOSITION=CROSS(FML(DP,"RSI(N)"),ODW); CLOSEOPENPOSITION.Name="CLOSEOPENPOSITION";CLOSEOPENPOSITION.SetAttrs("ColorDarkGreen");
+				FormulaData OPENSELL=CROSS(OUP,FML(DP,"RSI(N)")); OPENSELL.Name="OPENSELL";OPENSELL.SetAttrs("ColorRed");
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData STOPLOSS=EMPTY; STOPLOSS.Name="STOPLOSS";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,BUY,SELL,OPENSELL,CLOSEOPENPOSITION,BALANCE[0],0.000342,1,ALTBUY,ALTSELL,SL,STOPLOSS); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(SELL , C ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , C ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData NONAME2=DRAWICON(OPENSELL, C ,"OpenSell.Gif");NONAME2.SetAttrs("Top");
+				FormulaData NONAME3=DRAWICON(CLOSEOPENPOSITION, C ,"CloseOpenSell.Gif");NONAME3.SetAttrs("Bottom");
+				FormulaData STOPBUYS= STOPLOSS>0; STOPBUYS.Name="STOPBUYS";
+				FormulaData STOPSELLS=STOPLOSS<0; STOPSELLS.Name="STOPSELLS";
+				FormulaData NONAME4=DRAWICON(STOPSELLS , C,"StopSell.Gif");NONAME4.SetAttrs("Top");
+				FormulaData NONAME5=DRAWICON(STOPBUYS ,C ,"StopBuy.Gif");NONAME5.SetAttrs("Bottom");
+				
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3,NONAME4,NONAME5},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , C ,\"Sell.Gif\"),DRAWICON(BUY , C ,\"Buy.Gif\"),DRAWICON(OPENSELL, C ,\"OpenSell.Gif\"),DRAWICON(CLOSEOPENPOSITION, C ,\"CloseOpenSell.Gif\"),DRAWICON(STOPSELLS , C,\"StopSell.Gif\"),DRAWICON(STOPBUYS ,C ,\"StopBuy.Gif\")";}
+			}
+		} //class A_RSISL
+
+		[System.Serializable]
+		public class _T_MA_R1SL:FormulaBase
+		{
+			public double N=0;
+			public double M=0;
+			public double SL=0;
+			public _T_MA_R1SL():base()
+			{
+				AddParam("N","5","3","200","1","",FormulaParamType.Double);
+				AddParam("M","5","3","200","1","",FormulaParamType.Double);
+				AddParam("SL","0","0","100","0","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData BUY=CROSS(C,FML(DP,"MA(N)")); BUY.Name="BUY";
+				FormulaData SELL=CROSS(FML(DP,"MA(M)"),C); SELL.Name="SELL";
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData STOPLOSS=EMPTY; STOPLOSS.Name="STOPLOSS";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,BUY,SELL,0,0,BALANCE[0],0.000342,1,ALTBUY,ALTSELL,SL,STOPLOSS); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(SELL , BT ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , BT ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData STOPBUYS= STOPLOSS>0; STOPBUYS.Name="STOPBUYS";
+				FormulaData STOPSELLS=STOPLOSS<0; STOPSELLS.Name="STOPSELLS";
+				FormulaData NONAME2=DRAWICON(STOPSELLS , BT ,"StopSell.Gif");NONAME2.SetAttrs("Top");
+				FormulaData NONAME3=DRAWICON(STOPBUYS , BT ,"StopBuy.Gif");NONAME3.SetAttrs("Bottom");
+				FormulaData MAXPERF= (BALANCE/LLV(L))*HHV(H); MAXPERF.Name="MaxPerf";
+				FormulaData NONAME4=BT;
+				FormulaData NONAME5=MAXPERF;NONAME5.SetAttrs(" DarkGreen,Width2");
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3,NONAME4,NONAME5},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "Fiyat yukarı kesince alınır. Aşağı kesince satılır.\n\n";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , BT ,\"Sell.Gif\"),DRAWICON(BUY , BT ,\"Buy.Gif\"),DRAWICON(STOPSELLS , BT ,\"StopSell.Gif\"),DRAWICON(STOPBUYS , BT ,\"StopBuy.Gif\"),BT,MaxPerf";}
+			}
+		} //class _T_MA_R1SL
+
+		[System.Serializable]
+		public class A_MA_R1SL:FormulaBase
+		{
+			public double N=0;
+			public double M=0;
+			public double SL=0;
+			public A_MA_R1SL():base()
+			{
+				AddParam("N","5","3","200","1","",FormulaParamType.Double);
+				AddParam("M","5","3","200","1","",FormulaParamType.Double);
+				AddParam("SL","0","0","100","0","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData BUY=CROSS(C,FML(DP,"MA(N)")); BUY.Name="BUY";
+				FormulaData SELL=CROSS(FML(DP,"MA(M)"),C); SELL.Name="SELL";
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData STOPLOSS=EMPTY; STOPLOSS.Name="STOPLOSS";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,BUY,SELL,0,0,BALANCE[0],0.000342,1,ALTBUY,ALTSELL,SL,STOPLOSS); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(SELL , C ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , C ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData STOPBUYS= STOPLOSS>0; STOPBUYS.Name="STOPBUYS";
+				FormulaData STOPSELLS=STOPLOSS<0; STOPSELLS.Name="STOPSELLS";
+				FormulaData NONAME2=DRAWICON(STOPSELLS , C ,"StopSell.Gif");NONAME2.SetAttrs("Top");
+				FormulaData NONAME3=DRAWICON(STOPBUYS , C ,"StopBuy.Gif");NONAME3.SetAttrs("Bottom");
+				
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "Fiyat yukarı kesince alınır. Aşağı kesince satılır.\n\n";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , C ,\"Sell.Gif\"),DRAWICON(BUY , C ,\"Buy.Gif\"),DRAWICON(STOPSELLS , C ,\"StopSell.Gif\"),DRAWICON(STOPBUYS , C ,\"StopBuy.Gif\")";}
+			}
+		} //class A_MA_R1SL
+
+		[System.Serializable]
+		public class _T_ZARFSL:FormulaBase
+		{
+			public double OPT1=0;
+			public double OPT2=0;
+			public double OPT3=0;
+			public double SL=0;
+			public _T_ZARFSL():base()
+			{
+				AddParam("OPT1","3","2","6","1","",FormulaParamType.Double);
+				AddParam("OPT2","11","9","14","1","",FormulaParamType.Double);
+				AddParam("OPT3","3","2","6","1","",FormulaParamType.Double);
+				AddParam("SL","0","0","100","0","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData SIS=FML(DP,"MACD(26,12,9)"); SIS.Name="SIS";
+				FormulaData YUKARI=CROSS(SIS,0); YUKARI.Name="Yukari";
+				FormulaData ASAGI=CROSS(0,SIS); ASAGI.Name="Asagi";
+				FormulaData YTREND=SIS>0; YTREND.Name="Ytrend";
+				FormulaData ATREND=SIS<0; ATREND.Name="Atrend";
+				FormulaData YREF=REF(L,-1); YREF.Name="YRef";
+				FormulaData AREF=REF(H,-1); AREF.Name="ARef";
+				FormulaData SOYN=REF(FML(DP,"ATR(14)"),-1); SOYN.Name="sOyn";
+				FormulaData SYKAL=2-REF(FML(DP,"VHF(C,14)"),-1); SYKAL.Name="sYKal";
+				FormulaData SAKAL= 2-REF(FML(DP,"VHF(C,14)"),-1); SAKAL.Name="sAkal";
+				FormulaData SYSTP=YREF-SOYN*SYKAL; SYSTP.Name="sYstp";
+				FormulaData SASTP=AREF+SOYN*SAKAL; SASTP.Name="sAstp";
+				FormulaData STT=IF(YTREND,HIGHESTSINCE(1,YUKARI,SYSTP), LOWESTSINCE(1,ASAGI,SASTP)); STT.Name="sTT";
+				FormulaData SYT=IF(YTREND & C>STT ,STT,PREV); SYT.Name="sYT";
+				FormulaData SAT=IF(ATREND & C<STT ,STT,PREV); SAT.Name="sAT";
+				FormulaData SARI=IF(YTREND,SYT,SAT); SARI.Name="SARI";
+				FormulaData TR=RSQUARED(C,14); TR.Name="TR";
+				FormulaData TRM=MOV(TR,9,S); TRM.Name="TRM";
+				FormulaData YATAY=4/10; YATAY.Name="Yatay";
+				FormulaData YTG= CROSS(YATAY,TR) | (TR>YATAY & CROSS(TRM,TR) ); YTG.Name="YTG";
+				FormulaData YTC=TR>TRM & TR>YATAY; YTC.Name="YTC";
+				FormulaData YTY=BARSSINCE(YTG)<BARSSINCE(YTC); YTY.Name="YTY";
+				FormulaData FARK=(1+TR)*REF(MOV(MAX(O,C)-MIN(O,C),14,S),-1); FARK.Name="Fark";
+				FormulaData HX=REF(MOV(MAX(O,C)+FARK,5,S),-1); HX.Name="HX";
+				FormulaData LX=REF(MOV(MIN(O,C)-FARK,5,S),-1); LX.Name="LX";
+				FormulaData HS=IF(TR>YATAY & TR>TRM, LOWESTSINCE(1,YTC,HX), VALUEWHEN(1,YTG,HX)); HS.Name="HS";
+				FormulaData LS=IF(TR>YATAY & TR>TRM, HIGHESTSINCE(1,YTC,LX), VALUEWHEN(1,YTG,LX)); LS.Name="LS";
+				FormulaData HXX=MAX(HS,SARI); HXX.Name="HXX";
+				FormulaData LXX=MIN(LS,SARI); LXX.Name="LXX";
+				FormulaData P1=OPT1; P1.Name="p1";
+				FormulaData P2=OPT2; P2.Name="p2";
+				FormulaData R1=1; R1.Name="r1";
+				FormulaData P3=P2; P3.Name="p3";
+				FormulaData YY=OPT3; YY.Name="yy";
+				FormulaData AA=MOV(C,P1,W); AA.Name="AA";
+				FormulaData BB=MOV(AA,P2,W); BB.Name="BB";
+				FormulaData XAA=AA - REF(AA,-R1); XAA.Name="XAA";
+				FormulaData XBB=BB - REF(BB,-R1); XBB.Name="XBB";
+				FormulaData XAB= ABS(AA - BB); XAB.Name="XAB";
+				FormulaData OAB= (XAA+XBB)/2; OAB.Name="OAB";
+				FormulaData PP= XAB* OAB * OAB* OAB; PP.Name="PP";
+				FormulaData XPP=100*PP/HHV(ABS(PP),P3); XPP.Name="XPP";
+				FormulaData YUZDE=1000*(HXX-LXX)/LXX; YUZDE.Name="Yuzde";
+				FormulaData BUY=C>HXX; BUY.Name="BUY";BUY.SetAttrs("ColorDarkGreen");
+				FormulaData SELL=C<LXX; SELL.Name="SELL";SELL.SetAttrs(" ColorRed");
+				FormulaData OPENSELL=C<LXX; OPENSELL.Name="OPENSELL";OPENSELL.SetAttrs("ColorDarkOrange");
+				FormulaData CLOSEOPENSELL=C>HXX; CLOSEOPENSELL.Name="CLOSEOPENSELL";CLOSEOPENSELL.SetAttrs(" ColorDarkViolet");
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData STOPLOSS=EMPTY; STOPLOSS.Name="STOPLOSS";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,BUY,SELL,OPENSELL,CLOSEOPENSELL,BALANCE[0],0.000342,1,ALTBUY,ALTSELL,SL,STOPLOSS); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(SELL , BT ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , BT ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData NONAME2=DRAWICON(OPENSELL, BT ,"OpenSell.Gif");NONAME2.SetAttrs("Top");
+				FormulaData NONAME3=DRAWICON(CLOSEOPENSELL, BT ,"CloseOpenSell.Gif");NONAME3.SetAttrs("Bottom");
+				FormulaData STOPBUYS= STOPLOSS>0; STOPBUYS.Name="STOPBUYS";
+				FormulaData STOPSELLS=STOPLOSS<0; STOPSELLS.Name="STOPSELLS";
+				FormulaData NONAME4=DRAWICON(STOPSELLS , BT ,"StopSell.Gif");NONAME4.SetAttrs("Top");
+				FormulaData NONAME5=DRAWICON(STOPBUYS , BT ,"StopBuy.Gif");NONAME5.SetAttrs("Bottom");
+				FormulaData MAXPERF= (BALANCE/LLV(L))*HHV(H); MAXPERF.Name="MaxPerf";
+				FormulaData NONAME6=BT;
+				FormulaData NONAME7=MAXPERF;NONAME7.SetAttrs(" DarkGreen,Width2");
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3,NONAME4,NONAME5,NONAME6,NONAME7},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , BT ,\"Sell.Gif\"),DRAWICON(BUY , BT ,\"Buy.Gif\"),DRAWICON(OPENSELL, BT ,\"OpenSell.Gif\"),DRAWICON(CLOSEOPENSELL, BT ,\"CloseOpenSell.Gif\"),DRAWICON(STOPSELLS , BT ,\"StopSell.Gif\"),DRAWICON(STOPBUYS , BT ,\"StopBuy.Gif\"),BT,MaxPerf";}
+			}
+		} //class _T_ZARFSL
+
+		[System.Serializable]
+		public class A_ZARFSL:FormulaBase
+		{
+			public double OPT1=0;
+			public double OPT2=0;
+			public double OPT3=0;
+			public double SL=0;
+			public A_ZARFSL():base()
+			{
+				AddParam("OPT1","3","2","6","1","",FormulaParamType.Double);
+				AddParam("OPT2","11","9","14","1","",FormulaParamType.Double);
+				AddParam("OPT3","3","2","6","1","",FormulaParamType.Double);
+				AddParam("SL","0","0","100","0","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData SIS=FML(DP,"MACD(26,12,9)"); SIS.Name="SIS";
+				FormulaData YUKARI=CROSS(SIS,0); YUKARI.Name="Yukari";
+				FormulaData ASAGI=CROSS(0,SIS); ASAGI.Name="Asagi";
+				FormulaData YTREND=SIS>0; YTREND.Name="Ytrend";
+				FormulaData ATREND=SIS<0; ATREND.Name="Atrend";
+				FormulaData YREF=REF(L,-1); YREF.Name="YRef";
+				FormulaData AREF=REF(H,-1); AREF.Name="ARef";
+				FormulaData SOYN=REF(FML(DP,"ATR(14)"),-1); SOYN.Name="sOyn";
+				FormulaData SYKAL=2-REF(FML(DP,"VHF(C,14)"),-1); SYKAL.Name="sYKal";
+				FormulaData SAKAL= 2-REF(FML(DP,"VHF(C,14)"),-1); SAKAL.Name="sAkal";
+				FormulaData SYSTP=YREF-SOYN*SYKAL; SYSTP.Name="sYstp";
+				FormulaData SASTP=AREF+SOYN*SAKAL; SASTP.Name="sAstp";
+				FormulaData STT=IF(YTREND,HIGHESTSINCE(1,YUKARI,SYSTP), LOWESTSINCE(1,ASAGI,SASTP)); STT.Name="sTT";
+				FormulaData SYT=IF(YTREND & C>STT ,STT,PREV); SYT.Name="sYT";
+				FormulaData SAT=IF(ATREND & C<STT ,STT,PREV); SAT.Name="sAT";
+				FormulaData SARI=IF(YTREND,SYT,SAT); SARI.Name="SARI";
+				FormulaData TR=RSQUARED(C,14); TR.Name="TR";
+				FormulaData TRM=MOV(TR,9,S); TRM.Name="TRM";
+				FormulaData YATAY=4/10; YATAY.Name="Yatay";
+				FormulaData YTG= CROSS(YATAY,TR) | (TR>YATAY & CROSS(TRM,TR) ); YTG.Name="YTG";
+				FormulaData YTC=TR>TRM & TR>YATAY; YTC.Name="YTC";
+				FormulaData YTY=BARSSINCE(YTG)<BARSSINCE(YTC); YTY.Name="YTY";
+				FormulaData FARK=(1+TR)*REF(MOV(MAX(O,C)-MIN(O,C),14,S),-1); FARK.Name="Fark";
+				FormulaData HX=REF(MOV(MAX(O,C)+FARK,5,S),-1); HX.Name="HX";
+				FormulaData LX=REF(MOV(MIN(O,C)-FARK,5,S),-1); LX.Name="LX";
+				FormulaData HS=IF(TR>YATAY & TR>TRM, LOWESTSINCE(1,YTC,HX), VALUEWHEN(1,YTG,HX)); HS.Name="HS";
+				FormulaData LS=IF(TR>YATAY & TR>TRM, HIGHESTSINCE(1,YTC,LX), VALUEWHEN(1,YTG,LX)); LS.Name="LS";
+				FormulaData HXX=MAX(HS,SARI); HXX.Name="HXX";
+				FormulaData LXX=MIN(LS,SARI); LXX.Name="LXX";
+				FormulaData P1=OPT1; P1.Name="p1";
+				FormulaData P2=OPT2; P2.Name="p2";
+				FormulaData R1=1; R1.Name="r1";
+				FormulaData P3=P2; P3.Name="p3";
+				FormulaData YY=OPT3; YY.Name="yy";
+				FormulaData AA=MOV(C,P1,W); AA.Name="AA";
+				FormulaData BB=MOV(AA,P2,W); BB.Name="BB";
+				FormulaData XAA=AA - REF(AA,-R1); XAA.Name="XAA";
+				FormulaData XBB=BB - REF(BB,-R1); XBB.Name="XBB";
+				FormulaData XAB= ABS(AA - BB); XAB.Name="XAB";
+				FormulaData OAB= (XAA+XBB)/2; OAB.Name="OAB";
+				FormulaData PP= XAB* OAB * OAB* OAB; PP.Name="PP";
+				FormulaData XPP=100*PP/HHV(ABS(PP),P3); XPP.Name="XPP";
+				FormulaData YUZDE=1000*(HXX-LXX)/LXX; YUZDE.Name="Yuzde";
+				FormulaData BUY=C>HXX; BUY.Name="BUY";BUY.SetAttrs("ColorDarkGreen");
+				FormulaData SELL=C<LXX; SELL.Name="SELL";SELL.SetAttrs(" ColorRed");
+				FormulaData OPENSELL=C<LXX; OPENSELL.Name="OPENSELL";OPENSELL.SetAttrs("ColorDarkOrange");
+				FormulaData CLOSEOPENSELL=C>HXX; CLOSEOPENSELL.Name="CLOSEOPENSELL";CLOSEOPENSELL.SetAttrs(" ColorDarkViolet");
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData STOPLOSS=EMPTY; STOPLOSS.Name="STOPLOSS";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,BUY,SELL,OPENSELL,CLOSEOPENSELL,BALANCE[0],0.000342,1,ALTBUY,ALTSELL,SL,STOPLOSS); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(SELL , C ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , C ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData NONAME2=DRAWICON(OPENSELL, C ,"OpenSell.Gif");NONAME2.SetAttrs("Top");
+				FormulaData NONAME3=DRAWICON(CLOSEOPENSELL, C ,"CloseOpenSell.Gif");NONAME3.SetAttrs("Bottom");
+				FormulaData STOPBUYS= STOPLOSS>0; STOPBUYS.Name="STOPBUYS";
+				FormulaData STOPSELLS=STOPLOSS<0; STOPSELLS.Name="STOPSELLS";
+				FormulaData NONAME4=DRAWICON(STOPSELLS , C,"StopSell.Gif");NONAME4.SetAttrs("Top");
+				FormulaData NONAME5=DRAWICON(STOPBUYS , C ,"StopBuy.Gif");NONAME5.SetAttrs("Bottom");
+				
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3,NONAME4,NONAME5},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , C ,\"Sell.Gif\"),DRAWICON(BUY , C ,\"Buy.Gif\"),DRAWICON(OPENSELL, C ,\"OpenSell.Gif\"),DRAWICON(CLOSEOPENSELL, C ,\"CloseOpenSell.Gif\"),DRAWICON(STOPSELLS , C,\"StopSell.Gif\"),DRAWICON(STOPBUYs , C ,\"StopBuy.Gif\")";}
+			}
+		} //class A_ZARFSL
+
+		[System.Serializable]
+		public class _T_SAR_ASSL:FormulaBase
+		{
+			public double N=0;
+			public double STEP=0;
+			public double MAXP=0;
+			public double SL=0;
+			public _T_SAR_ASSL():base()
+			{
+				AddParam("N","2","1","100","2","",FormulaParamType.Double);
+				AddParam("STEP","2","1","100","2","",FormulaParamType.Double);
+				AddParam("MAXP","2","1","100","2","",FormulaParamType.Double);
+				AddParam("SL","0","0","100","0","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData BUY=SARTURN(N,STEP,MAXP)==1; BUY.Name="BUY";
+				FormulaData SELL=SARTURN(N,STEP,MAXP)==-1; SELL.Name="SELL";SELL.SetAttrs("ColorRed");
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData STOPLOSS=EMPTY; STOPLOSS.Name="STOPLOSS";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,BUY,SELL,0,0,BALANCE[0],0.000342,1,ALTBUY,ALTSELL,SL,STOPLOSS); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(SELL , BT ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , BT ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData STOPBUYS= STOPLOSS>0; STOPBUYS.Name="STOPBUYS";
+				FormulaData STOPSELLS=STOPLOSS<0; STOPSELLS.Name="STOPSELLS";
+				FormulaData NONAME2=DRAWICON(STOPSELLS , BT ,"StopSell.Gif");NONAME2.SetAttrs("Top");
+				FormulaData NONAME3=DRAWICON(STOPBUYS , BT ,"StopBuy.Gif");NONAME3.SetAttrs("Bottom");
+				FormulaData MAXPERF= (BALANCE/LLV(L))*HHV(H); MAXPERF.Name="MaxPerf";
+				FormulaData NONAME4=BT;
+				FormulaData NONAME5=MAXPERF;NONAME5.SetAttrs(" DarkGreen,Width2");
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3,NONAME4,NONAME5},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "RSI Trading system\n\n\n\n\n";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , BT ,\"Sell.Gif\"),DRAWICON(BUY , BT ,\"Buy.Gif\"),DRAWICON(STOPSELLS , BT ,\"StopSell.Gif\"),DRAWICON(STOPBUYS , BT ,\"StopBuy.Gif\"),BT,MaxPerf";}
+			}
+		} //class _T_SAR_ASSL
+
+		[System.Serializable]
+		public class A_SAR_ASSL:FormulaBase
+		{
+			public double N=0;
+			public double STEP=0;
+			public double MAXP=0;
+			public double SL=0;
+			public A_SAR_ASSL():base()
+			{
+				AddParam("N","2","1","100","2","",FormulaParamType.Double);
+				AddParam("STEP","2","1","100","2","",FormulaParamType.Double);
+				AddParam("MAXP","2","1","100","2","",FormulaParamType.Double);
+				AddParam("SL","0","0","100","0","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData BUY=SARTURN(N,STEP,MAXP)==1; BUY.Name="BUY";
+				FormulaData SELL=SARTURN(N,STEP,MAXP)==-1; SELL.Name="SELL";SELL.SetAttrs("ColorRed");
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData STOPLOSS=EMPTY; STOPLOSS.Name="STOPLOSS";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,BUY,SELL,0,0,BALANCE[0],0.000342,1,ALTBUY,ALTSELL,SL,STOPLOSS); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(SELL , C ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , C ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData STOPBUYS= STOPLOSS>0; STOPBUYS.Name="STOPBUYS";
+				FormulaData STOPSELLS=STOPLOSS<0; STOPSELLS.Name="STOPSELLS";
+				FormulaData NONAME2=DRAWICON(STOPSELLS , ABS(STOPLOSS) ,"StopSell.Gif");NONAME2.SetAttrs("Top");
+				FormulaData NONAME3=DRAWICON(STOPBUYS , STOPLOSS ,"StopBuy.Gif");NONAME3.SetAttrs("Bottom");
+				
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "RSI Trading system\n\n\n\n\n";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , C ,\"Sell.Gif\"),DRAWICON(BUY , C ,\"Buy.Gif\"),DRAWICON(STOPSELLS , ABS(STOPLOSS) ,\"StopSell.Gif\"),DRAWICON(STOPBUYs , STOPLOSS ,\"StopBuy.Gif\")";}
+			}
+		} //class A_SAR_ASSL
+
+		[System.Serializable]
+		public class _T_MA_TRIPLESL:FormulaBase
+		{
+			public double T=0;
+			public double N=0;
+			public double M=0;
+			public double SL=0;
+			public _T_MA_TRIPLESL():base()
+			{
+				AddParam("T","5","3","14","1","",FormulaParamType.Double);
+				AddParam("N","5","3","200","1","",FormulaParamType.Double);
+				AddParam("M","5","3","200","1","",FormulaParamType.Double);
+				AddParam("SL","0","0","100","0","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData MAN=MA(C,N); MAN.Name="MAN";
+				FormulaData MAM=MA(C,M); MAM.Name="MAM";
+				FormulaData MAT=MA(C,T); MAT.Name="MAT";
+				FormulaData BUY=CROSS(MAT,MAN); BUY.Name="BUY";
+				FormulaData SELL=CROSS(MAM,MAT); SELL.Name="SELL";
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData STOPLOSS=EMPTY; STOPLOSS.Name="STOPLOSS";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,BUY,SELL,0,0,BALANCE[0],0.000342,1,ALTBUY,ALTSELL,SL,STOPLOSS); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(SELL , BT ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , BT ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData STOPBUYS= STOPLOSS==1; STOPBUYS.Name="STOPBUYS";
+				FormulaData STOPSELLS=STOPLOSS==-1; STOPSELLS.Name="STOPSELLS";
+				FormulaData NONAME2=DRAWICON(STOPSELLS , BT ,"StopSell.Gif");NONAME2.SetAttrs("Top");
+				FormulaData NONAME3=DRAWICON(STOPBUYS , BT ,"StopBuy.Gif");NONAME3.SetAttrs("Bottom");
+				FormulaData MAXPERF= (BALANCE/LLV(L))*HHV(H); MAXPERF.Name="MaxPerf";
+				FormulaData NONAME4=BT;
+				FormulaData NONAME5=MAXPERF;NONAME5.SetAttrs(" DarkGreen,Width2");
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3,NONAME4,NONAME5},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , BT ,\"Sell.Gif\"),DRAWICON(BUY , BT ,\"Buy.Gif\"),DRAWICON(STOPSELLS , BT ,\"StopSell.Gif\"),DRAWICON(STOPBUYS , BT ,\"StopBuy.Gif\"),BT,MaxPerf";}
+			}
+		} //class _T_MA_TRIPLESL
+
+		[System.Serializable]
+		public class A_MA_TRIPLESL:FormulaBase
+		{
+			public double T=0;
+			public double N=0;
+			public double M=0;
+			public double SL=0;
+			public A_MA_TRIPLESL():base()
+			{
+				AddParam("T","5","3","14","1","",FormulaParamType.Double);
+				AddParam("N","5","3","200","1","",FormulaParamType.Double);
+				AddParam("M","5","3","200","1","",FormulaParamType.Double);
+				AddParam("SL","0","0","100","0","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData MAN=MA(C,N); MAN.Name="MAN";
+				FormulaData MAM=MA(C,M); MAM.Name="MAM";
+				FormulaData MAT=MA(C,T); MAT.Name="MAT";
+				FormulaData BUY=CROSS(MAT,MAN); BUY.Name="BUY";
+				FormulaData SELL=CROSS(MAM,MAT); SELL.Name="SELL";
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData STOPLOSS=EMPTY; STOPLOSS.Name="STOPLOSS";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,BUY,SELL,0,0,BALANCE[0],0.000342,1,ALTBUY,ALTSELL,SL,STOPLOSS); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(SELL , C ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , C ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData STOPBUYS= STOPLOSS>0; STOPBUYS.Name="STOPBUYS";
+				FormulaData STOPSELLS=STOPLOSS<0; STOPSELLS.Name="STOPSELLS";
+				FormulaData NONAME2=DRAWICON(STOPSELLS , ABS(STOPLOSS) ,"StopSell.Gif");NONAME2.SetAttrs("Top");
+				FormulaData NONAME3=DRAWICON(STOPBUYS , STOPLOSS ,"StopBuy.Gif");NONAME3.SetAttrs("Bottom");
+				
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , C ,\"Sell.Gif\"),DRAWICON(BUY , C ,\"Buy.Gif\"),DRAWICON(STOPSELLS , ABS(STOPLOSS) ,\"StopSell.Gif\"),DRAWICON(STOPBUYs , STOPLOSS ,\"StopBuy.Gif\")";}
+			}
+		} //class A_MA_TRIPLESL
+
+		[System.Serializable]
+		public class _T_WAD_ASSL:FormulaBase
+		{
+			public double N=0;
+			public double M=0;
+			public double SL=0;
+			public _T_WAD_ASSL():base()
+			{
+				AddParam("N","40","3","100","1","",FormulaParamType.Double);
+				AddParam("M","40","3","100","1","",FormulaParamType.Double);
+				AddParam("SL","0","0","100","0","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData AD=SUM(IF( CLOSE>REF(CLOSE,1),CLOSE-MIN(REF(CLOSE,1),LOW),IF(CLOSE<REF(CLOSE,1),
+CLOSE-MAX(REF(CLOSE,1),HIGH),0)),0); AD.Name="AD";
+				FormulaData MB=MA(AD,N); MB.Name="MB";
+				FormulaData MS=MA(AD,M); MS.Name="MS";
+				FormulaData BUY=CROSS(MB,AD); BUY.Name="BUY";
+				FormulaData SELL=CROSS(AD,MS); SELL.Name="SELL";
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData STOPLOSS=EMPTY; STOPLOSS.Name="STOPLOSS";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,BUY,SELL,0,0,BALANCE[0],0.000342,1,ALTBUY,ALTSELL,SL,STOPLOSS); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(SELL , BT ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , BT ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData STOPBUYS= STOPLOSS>0; STOPBUYS.Name="STOPBUYS";
+				FormulaData STOPSELLS=STOPLOSS<0; STOPSELLS.Name="STOPSELLS";
+				FormulaData NONAME2=DRAWICON(STOPSELLS , BT ,"StopSell.Gif");NONAME2.SetAttrs("Top");
+				FormulaData NONAME3=DRAWICON(STOPBUYS , BT ,"StopBuy.Gif");NONAME3.SetAttrs("Bottom");
+				FormulaData MAXPERF= (BALANCE/LLV(L))*HHV(H); MAXPERF.Name="MaxPerf";
+				FormulaData NONAME4=BT;
+				FormulaData NONAME5=MAXPERF;NONAME5.SetAttrs(" DarkGreen,Width2");
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3,NONAME4,NONAME5},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "MB ortalama yukarı kesilince alınır. MS aşağı kesilince satılır.\n\n";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , BT ,\"Sell.Gif\"),DRAWICON(BUY , BT ,\"Buy.Gif\"),DRAWICON(STOPSELLS , BT ,\"StopSell.Gif\"),DRAWICON(STOPBUYS , BT ,\"StopBuy.Gif\"),BT,MaxPerf";}
+			}
+		} //class _T_WAD_ASSL
+
+		[System.Serializable]
+		public class A_WAD_ASSL:FormulaBase
+		{
+			public double N=0;
+			public double M=0;
+			public double SL=0;
+			public A_WAD_ASSL():base()
+			{
+				AddParam("N","40","3","200","1","",FormulaParamType.Double);
+				AddParam("M","40","3","200","1","",FormulaParamType.Double);
+				AddParam("SL","0","0","100","0","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData AD=SUM(IF( CLOSE>REF(CLOSE,1),CLOSE-MIN(REF(CLOSE,1),LOW),IF(CLOSE<REF(CLOSE,1),
+CLOSE-MAX(REF(CLOSE,1),HIGH),0)),0); AD.Name="AD";
+				FormulaData MB=MA(AD,N); MB.Name="MB";
+				FormulaData MS=MA(AD,M); MS.Name="MS";
+				FormulaData BUY=CROSS(MB,AD); BUY.Name="BUY";
+				FormulaData SELL=CROSS(AD,MS); SELL.Name="SELL";
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData STOPLOSS=EMPTY; STOPLOSS.Name="STOPLOSS";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,BUY,SELL,0,0,BALANCE[0],0.000342,1,ALTBUY,ALTSELL,SL,STOPLOSS); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(SELL , C ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , C ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData STOPBUYS= STOPLOSS>0; STOPBUYS.Name="STOPBUYS";
+				FormulaData STOPSELLS=STOPLOSS<0; STOPSELLS.Name="STOPSELLS";
+				FormulaData NONAME2=DRAWICON(STOPSELLS , C ,"StopSell.Gif");NONAME2.SetAttrs("Top");
+				FormulaData NONAME3=DRAWICON(STOPBUYS , C ,"StopBuy.Gif");NONAME3.SetAttrs("Bottom");
+				
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "MB ortalama yukarı kesilince alınır. MS aşağı kesilince satılır.\n\n";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , C ,\"Sell.Gif\"),DRAWICON(BUY , C ,\"Buy.Gif\"),DRAWICON(STOPSELLS , C ,\"StopSell.Gif\"),DRAWICON(STOPBUYS , C ,\"StopBuy.Gif\")";}
+			}
+		} //class A_WAD_ASSL
+
+		[System.Serializable]
+		public class _T_WAD_SASL:FormulaBase
+		{
+			public double N=0;
+			public double M=0;
+			public double SL=0;
+			public _T_WAD_SASL():base()
+			{
+				AddParam("N","40","3","100","1","",FormulaParamType.Double);
+				AddParam("M","40","3","100","1","",FormulaParamType.Double);
+				AddParam("SL","0","0","100","0","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData AD=SUM(IF( CLOSE>REF(CLOSE,1),CLOSE-MIN(REF(CLOSE,1),LOW),IF(CLOSE<REF(CLOSE,1),
+CLOSE-MAX(REF(CLOSE,1),HIGH),0)),0); AD.Name="AD";
+				FormulaData MB=MA(AD,N); MB.Name="MB";
+				FormulaData MS=MA(AD,M); MS.Name="MS";
+				FormulaData CLOSEOPENSELL=CROSS(AD,MS); CLOSEOPENSELL.Name="CloseOpenSell";
+				FormulaData OPENSELL=CROSS(MB,AD); OPENSELL.Name="OPENSELL";
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData STOPLOSS=EMPTY; STOPLOSS.Name="STOPLOSS";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,0,0,OPENSELL,CLOSEOPENSELL,BALANCE[0],0.000342,1,ALTBUY,ALTSELL,SL,STOPLOSS); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(OPENSELL , BT ,"OpenSell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(CLOSEOPENSELL, BT ,"CloseOpenSell.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData STOPBUYS= STOPLOSS>0; STOPBUYS.Name="STOPBUYS";
+				FormulaData STOPSELLS=STOPLOSS<0; STOPSELLS.Name="STOPSELLS";
+				FormulaData NONAME2=DRAWICON(STOPSELLS , BT ,"StopSell.Gif");NONAME2.SetAttrs("Top");
+				FormulaData NONAME3=DRAWICON(STOPBUYS , BT ,"StopBuy.Gif");NONAME3.SetAttrs("Bottom");
+				FormulaData MAXPERF= (BALANCE/LLV(L))*HHV(H); MAXPERF.Name="MaxPerf";
+				FormulaData NONAME4=BT;
+				FormulaData NONAME5=MAXPERF;NONAME5.SetAttrs(" DarkGreen,Width2");
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3,NONAME4,NONAME5},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "MB ortalama yukarı kesilince alınır. MS aşağı kesilince satılır.\n\n";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(OPENSELL , BT ,\"OpenSell.Gif\"),DRAWICON(CloseOpenSell, BT ,\"CloseOpenSell.Gif\"),DRAWICON(STOPSELLS , BT ,\"StopSell.Gif\"),DRAWICON(STOPBUYS , BT ,\"StopBuy.Gif\"),BT,MaxPerf";}
+			}
+		} //class _T_WAD_SASL
+
+		[System.Serializable]
+		public class A_WAD_SASL:FormulaBase
+		{
+			public double N=0;
+			public double M=0;
+			public double SL=0;
+			public A_WAD_SASL():base()
+			{
+				AddParam("N","40","3","100","1","",FormulaParamType.Double);
+				AddParam("M","40","3","100","1","",FormulaParamType.Double);
+				AddParam("SL","0","0","100","0","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData AD=SUM(IF( CLOSE>REF(CLOSE,1),CLOSE-MIN(REF(CLOSE,1),LOW),IF(CLOSE<REF(CLOSE,1),
+CLOSE-MAX(REF(CLOSE,1),HIGH),0)),0); AD.Name="AD";
+				FormulaData MB=MA(AD,N); MB.Name="MB";
+				FormulaData MS=MA(AD,M); MS.Name="MS";
+				FormulaData CLOSEOPENSELL=CROSS(AD,MS); CLOSEOPENSELL.Name="CloseOpenSell";
+				FormulaData OPENSELL=CROSS(MB,AD); OPENSELL.Name="OPENSELL";
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData STOPLOSS=EMPTY; STOPLOSS.Name="STOPLOSS";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,0,0,OPENSELL,CLOSEOPENSELL,BALANCE[0],0.000342,1,ALTBUY,ALTSELL,SL,STOPLOSS); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(OPENSELL , C ,"OpenSell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(CLOSEOPENSELL, C ,"CloseOpenSell.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData STOPBUYS= STOPLOSS>0; STOPBUYS.Name="STOPBUYS";
+				FormulaData STOPSELLS=STOPLOSS<0; STOPSELLS.Name="STOPSELLS";
+				FormulaData NONAME2=DRAWICON(STOPSELLS , C ,"StopSell.Gif");NONAME2.SetAttrs("Top");
+				FormulaData NONAME3=DRAWICON(STOPBUYS , C ,"StopBuy.Gif");NONAME3.SetAttrs("Bottom");
+				
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "MB ortalama yukarı kesilince alınır. MS aşağı kesilince satılır.\n\n";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(OPENSELL , C ,\"OpenSell.Gif\"),DRAWICON(CloseOpenSell, C ,\"CloseOpenSell.Gif\"),DRAWICON(STOPSELLS , C ,\"StopSell.Gif\"),DRAWICON(STOPBUYS , C ,\"StopBuy.Gif\")";}
+			}
+		} //class A_WAD_SASL
+
+		[System.Serializable]
+		public class _T_WAD_AS:FormulaBase
+		{
+			public double N=0;
+			public double M=0;
+			public _T_WAD_AS():base()
+			{
+				AddParam("N","40","3","100","1","",FormulaParamType.Double);
+				AddParam("M","40","3","100","1","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData AD=SUM(IF( CLOSE>REF(CLOSE,1),CLOSE-MIN(REF(CLOSE,1),LOW),IF(CLOSE<REF(CLOSE,1),
+CLOSE-MAX(REF(CLOSE,1),HIGH),0)),0); AD.Name="AD";
+				FormulaData MB=MA(AD,N); MB.Name="MB";
+				FormulaData MS=MA(AD,M); MS.Name="MS";
+				FormulaData BUY=CROSS(AD,MB); BUY.Name="BUY";
+				FormulaData SELL=CROSS(M,AD); SELL.Name="SELL";
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData STOPLOSS=EMPTY; STOPLOSS.Name="STOPLOSS";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,BUY,SELL,0,0,BALANCE[0],0.000342,1,ALTBUY,ALTSELL,0,STOPLOSS); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(SELL , BT ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , BT ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData STOPBUYS= STOPLOSS>0; STOPBUYS.Name="STOPBUYS";
+				FormulaData STOPSELLS=STOPLOSS<0; STOPSELLS.Name="STOPSELLS";
+				FormulaData NONAME2=DRAWICON(STOPSELLS , BT ,"StopSell.Gif");NONAME2.SetAttrs("Top");
+				FormulaData NONAME3=DRAWICON(STOPBUYS , BT ,"StopBuy.Gif");NONAME3.SetAttrs("Bottom");
+				FormulaData MAXPERF= (BALANCE/LLV(L))*HHV(H); MAXPERF.Name="MaxPerf";
+				FormulaData NONAME4=BT;
+				FormulaData NONAME5=MAXPERF;NONAME5.SetAttrs(" DarkGreen,Width2");
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3,NONAME4,NONAME5},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "MB ortalama yukarı kesilince alınır. MS aşağı kesilince satılır.\n\n";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , BT ,\"Sell.Gif\"),DRAWICON(BUY , BT ,\"Buy.Gif\"),DRAWICON(STOPSELLS , BT ,\"StopSell.Gif\"),DRAWICON(STOPBUYS , BT ,\"StopBuy.Gif\"),BT,MaxPerf";}
+			}
+		} //class _T_WAD_AS
+
+		[System.Serializable]
+		public class A_WAD_AS:FormulaBase
+		{
+			public double N=0;
+			public double M=0;
+			public A_WAD_AS():base()
+			{
+				AddParam("N","40","3","200","1","",FormulaParamType.Double);
+				AddParam("M","40","3","200","1","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData AD=SUM(IF( CLOSE>REF(CLOSE,1),CLOSE-MIN(REF(CLOSE,1),LOW),IF(CLOSE<REF(CLOSE,1),
+CLOSE-MAX(REF(CLOSE,1),HIGH),0)),0); AD.Name="AD";
+				FormulaData MB=MA(AD,N); MB.Name="MB";
+				FormulaData MS=MA(AD,M); MS.Name="MS";
+				FormulaData BUY=CROSS(AD,MB); BUY.Name="BUY";
+				FormulaData SELL=CROSS(M,AD); SELL.Name="SELL";
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData STOPLOSS=EMPTY; STOPLOSS.Name="STOPLOSS";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,BUY,SELL,0,0,BALANCE[0],0.000342,1,ALTBUY,ALTSELL,0,STOPLOSS); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(SELL , C ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , C ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData STOPBUYS= STOPLOSS>0; STOPBUYS.Name="STOPBUYS";
+				FormulaData STOPSELLS=STOPLOSS<0; STOPSELLS.Name="STOPSELLS";
+				FormulaData NONAME2=DRAWICON(STOPSELLS , ABS(STOPLOSS) ,"StopSell.Gif");NONAME2.SetAttrs("Top");
+				FormulaData NONAME3=DRAWICON(STOPBUYS , STOPLOSS ,"StopBuy.Gif");NONAME3.SetAttrs("Bottom");
+				
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "MB ortalama yukarı kesilince alınır. MS aşağı kesilince satılır.\n\n";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , C ,\"Sell.Gif\"),DRAWICON(BUY , C ,\"Buy.Gif\"),DRAWICON(STOPSELLS , ABS(STOPLOSS) ,\"StopSell.Gif\"),DRAWICON(STOPBUYs , STOPLOSS ,\"StopBuy.Gif\")";}
+			}
+		} //class A_WAD_AS
+
+		[System.Serializable]
+		public class _T_WADSL:FormulaBase
+		{
+			public double N=0;
+			public double M=0;
+			public double NO=0;
+			public double NP=0;
+			public double SL=0;
+			public _T_WADSL():base()
+			{
+				AddParam("N","40","3","100","3","",FormulaParamType.Double);
+				AddParam("M","40","3","100","3","",FormulaParamType.Double);
+				AddParam("NO","40","3","100","3","",FormulaParamType.Double);
+				AddParam("NP","40","3","100","3","",FormulaParamType.Double);
+				AddParam("SL","0","0","100","0","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData AD=SUM(IF( CLOSE>REF(CLOSE,1),CLOSE-MIN(REF(CLOSE,1),LOW),IF(CLOSE<REF(CLOSE,1),
+CLOSE-MAX(REF(CLOSE,1),HIGH),0)),0); AD.Name="AD";
+				FormulaData MB=MA(AD,N); MB.Name="MB";
+				FormulaData MS=MA(AD,M); MS.Name="MS";
+				FormulaData OB=MA(AD,NO); OB.Name="OB";
+				FormulaData OS=MA(AD,NP); OS.Name="OS";
+				FormulaData CLOSEOPENSELL=CROSS(AD,OS); CLOSEOPENSELL.Name="CloseOpenSell";
+				FormulaData OPENSELL=CROSS(OB,AD); OPENSELL.Name="OPENSELL";
+				FormulaData BUY=CROSS(MB,AD); BUY.Name="BUY";
+				FormulaData SELL=CROSS(AD,MS); SELL.Name="SELL";
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData STOPLOSS=EMPTY; STOPLOSS.Name="STOPLOSS";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,BUY,SELL,OPENSELL,CLOSEOPENSELL,BALANCE[0],0.000342,1,ALTBUY,ALTSELL,SL,STOPLOSS); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(SELL , BT ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , BT ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData NONAME2=DRAWICON(OPENSELL , BT ,"OpenSell.Gif");NONAME2.SetAttrs("Top");
+				FormulaData NONAME3=DRAWICON(CLOSEOPENSELL, BT ,"CloseOpenSell.Gif");NONAME3.SetAttrs("Bottom");
+				FormulaData STOPBUYS= STOPLOSS>0; STOPBUYS.Name="STOPBUYS";
+				FormulaData STOPSELLS=STOPLOSS<0; STOPSELLS.Name="STOPSELLS";
+				FormulaData NONAME4=DRAWICON(STOPSELLS , BT ,"StopSell.Gif");NONAME4.SetAttrs("Top");
+				FormulaData NONAME5=DRAWICON(STOPBUYS , BT ,"StopBuy.Gif");NONAME5.SetAttrs("Bottom");
+				FormulaData MAXPERF= (BALANCE/LLV(L))*HHV(H); MAXPERF.Name="MaxPerf";
+				FormulaData NONAME6=BT;
+				FormulaData NONAME7=MAXPERF;NONAME7.SetAttrs(" DarkGreen,Width2");
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3,NONAME4,NONAME5,NONAME6,NONAME7},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "MB ortalama yukarı kesilince alınır. MS aşağı kesilince satılır.\n\n";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , BT ,\"Sell.Gif\"),DRAWICON(BUY , BT ,\"Buy.Gif\"),DRAWICON(OPENSELL , BT ,\"OpenSell.Gif\"),DRAWICON(CloseOpenSell, BT ,\"CloseOpenSell.Gif\"),DRAWICON(STOPSELLS , BT ,\"StopSell.Gif\"),DRAWICON(STOPBUYS , BT ,\"StopBuy.Gif\"),BT,MaxPerf";}
+			}
+		} //class _T_WADSL
+
+		[System.Serializable]
+		public class A_WADSL:FormulaBase
+		{
+			public double N=0;
+			public double M=0;
+			public double NO=0;
+			public double NP=0;
+			public double SL=0;
+			public A_WADSL():base()
+			{
+				AddParam("N","40","3","100","1","",FormulaParamType.Double);
+				AddParam("M","40","3","100","1","",FormulaParamType.Double);
+				AddParam("NO","40","3","100","1","",FormulaParamType.Double);
+				AddParam("NP","40","3","100","1","",FormulaParamType.Double);
+				AddParam("SL","0","0","100","0","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData AD=SUM(IF( CLOSE>REF(CLOSE,1),CLOSE-MIN(REF(CLOSE,1),LOW),IF(CLOSE<REF(CLOSE,1),
+CLOSE-MAX(REF(CLOSE,1),HIGH),0)),0); AD.Name="AD";
+				FormulaData MB=MA(AD,N); MB.Name="MB";
+				FormulaData MS=MA(AD,M); MS.Name="MS";
+				FormulaData OB=MA(AD,NO); OB.Name="OB";
+				FormulaData OS=MA(AD,NP); OS.Name="OS";
+				FormulaData CLOSEOPENSELL=CROSS(AD,OS); CLOSEOPENSELL.Name="CloseOpenSell";
+				FormulaData OPENSELL=CROSS(OB,AD); OPENSELL.Name="OPENSELL";
+				FormulaData BUY=CROSS(MB,AD); BUY.Name="BUY";
+				FormulaData SELL=CROSS(AD,MS); SELL.Name="SELL";
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData STOPLOSS=EMPTY; STOPLOSS.Name="STOPLOSS";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,BUY,SELL,OPENSELL,CLOSEOPENSELL,BALANCE[0],0.000342,1,ALTBUY,ALTSELL,SL,STOPLOSS); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(SELL , C ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , C ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData NONAME2=DRAWICON(OPENSELL , C ,"OpenSell.Gif");NONAME2.SetAttrs("Top");
+				FormulaData NONAME3=DRAWICON(CLOSEOPENSELL, C ,"CloseOpenSell.Gif");NONAME3.SetAttrs("Bottom");
+				FormulaData STOPBUYS= STOPLOSS>0; STOPBUYS.Name="STOPBUYS";
+				FormulaData STOPSELLS=STOPLOSS<0; STOPSELLS.Name="STOPSELLS";
+				FormulaData NONAME4=DRAWICON(STOPSELLS , C ,"StopSell.Gif");NONAME4.SetAttrs("Top");
+				FormulaData NONAME5=DRAWICON(STOPBUYS , C ,"StopBuy.Gif");NONAME5.SetAttrs("Bottom");
+				
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3,NONAME4,NONAME5},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "MB ortalama yukarı kesilince alınır. MS aşağı kesilince satılır.\n\n";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , C ,\"Sell.Gif\"),DRAWICON(BUY , C ,\"Buy.Gif\"),DRAWICON(OPENSELL , C ,\"OpenSell.Gif\"),DRAWICON(CloseOpenSell, C ,\"CloseOpenSell.Gif\"),DRAWICON(STOPSELLS , C ,\"StopSell.Gif\"),DRAWICON(STOPBUYs , C ,\"StopBuy.Gif\")";}
+			}
+		} //class A_WADSL
+
+		[System.Serializable]
+		public class _T_ZIGAD:FormulaBase
+		{
+			public double SPR=0;
+			public double SL=0;
+			public _T_ZIGAD():base()
+			{
+				AddParam("SPR","0.35","0.01","5","0.01","HHV ve LLV periodu",FormulaParamType.Double);
+				AddParam("SL","0","0","100","0","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData AD=SUM(((CLOSE-LOW)-(HIGH-CLOSE))/(HIGH-LOW)*VOL,0); AD.Name="AD";
+				FormulaData SIG=EMPTY; SIG.Name="SIG";
+				FormulaData Z= ZIGP(AD,SPR,SIG); Z.Name="Z";
+				FormulaData BUY=SIG>1; BUY.Name="BUY";
+				FormulaData SELL=SIG<-1; SELL.Name="SELL";SELL.SetAttrs("ColorRed");
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData STOPLOSS=EMPTY; STOPLOSS.Name="STOPLOSS";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,BUY,SELL,0,0,BALANCE[0],0.000342,1,ALTBUY,ALTSELL,SL,STOPLOSS,0.00,TRUE); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(SELL , BT ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , BT ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData STOPBUYS= STOPLOSS>0; STOPBUYS.Name="STOPBUYS";
+				FormulaData STOPSELLS=STOPLOSS<0; STOPSELLS.Name="STOPSELLS";
+				FormulaData NONAME2=DRAWICON(STOPSELLS , BT ,"StopSell.Gif");NONAME2.SetAttrs("Top");
+				FormulaData NONAME3=DRAWICON(STOPBUYS , BT ,"StopBuy.Gif");NONAME3.SetAttrs("Bottom");
+				FormulaData MAXPERF= (BALANCE/LLV(L))*HHV(H); MAXPERF.Name="MaxPerf";
+				FormulaData NONAME4=BT;
+				FormulaData NONAME5=MAXPERF;NONAME5.SetAttrs(" DarkGreen,Width2");
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3,NONAME4,NONAME5},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "MB ortalama yukarı kesilince alınır. MS aşağı kesilince satılır.\n\n";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , BT ,\"Sell.Gif\"),DRAWICON(BUY , BT ,\"Buy.Gif\"),DRAWICON(STOPSELLS , BT ,\"StopSell.Gif\"),DRAWICON(STOPBUYS , BT ,\"StopBuy.Gif\"),BT,MaxPerf";}
+			}
+		} //class _T_ZIGAD
+
+		[System.Serializable]
+		public class ZIGWAD:FormulaBase
+		{
+			public double SPR=0;
+			public ZIGWAD():base()
+			{
+				AddParam("SPR","21","4","2000","1","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData AD=SUM(IF( CLOSE>REF(CLOSE,1),CLOSE-MIN(REF(CLOSE,1),LOW),IF(CLOSE<REF(CLOSE,1),
+CLOSE-MAX(REF(CLOSE,1),HIGH),0)),0); AD.Name="AD";
+				FormulaData SIG=EMPTY; SIG.Name="SIG";
+				FormulaData Z=ZIGS(AD,SPR,SIG); Z.Name="Z";
+				
+				return new FormulaPackage(new FormulaData[]{Z},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "MB ortalama yukarı kesilince alınır. MS aşağı kesilince satılır.\n\n";}
+			}
+			public override string OutputFields
+			{
+				get{return "Z";}
+			}
+		} //class ZIGWAD
+
+		[System.Serializable]
+		public class A_ZIGAD:FormulaBase
+		{
+			public double SPR=0;
+			public double SL=0;
+			public A_ZIGAD():base()
+			{
+				AddParam("SPR","0.35","0.01","5","0.01","",FormulaParamType.Double);
+				AddParam("SL","0","0","100","0","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData AD=SUM(((CLOSE-LOW)-(HIGH-CLOSE))/(HIGH-LOW)*VOL,0); AD.Name="AD";
+				FormulaData SIG=EMPTY; SIG.Name="SIG";
+				FormulaData Z= ZIGP(AD,SPR,SIG); Z.Name="Z";
+				FormulaData BUY=SIG>1; BUY.Name="BUY";
+				FormulaData SELL=SIG<-1; SELL.Name="SELL";SELL.SetAttrs("ColorRed");
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData STOPLOSS=EMPTY; STOPLOSS.Name="STOPLOSS";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,BUY,SELL,0,0,BALANCE[0],0.000342,1,ALTBUY,ALTSELL,SL,STOPLOSS,0.0,TRUE); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(SELL , C ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , C ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData STOPBUYS= STOPLOSS>0; STOPBUYS.Name="STOPBUYS";
+				FormulaData STOPSELLS=STOPLOSS<0; STOPSELLS.Name="STOPSELLS";
+				FormulaData NONAME2=DRAWICON(STOPSELLS , C ,"StopSell.Gif");NONAME2.SetAttrs("Top");
+				FormulaData NONAME3=DRAWICON(STOPBUYS , C ,"StopBuy.Gif");NONAME3.SetAttrs("Bottom");
+				FormulaData DSELL=SIG==-0.5; DSELL.Name="DSELL";
+				FormulaData DBUY= SIG==0.5; DBUY.Name="DBUY";
+				FormulaData NONAME4=DRAWICON(DSELL , C ,"OpenSell.Gif");NONAME4.SetAttrs("Top");
+				FormulaData NONAME5=DRAWICON(DBUY, C ,"CloseOpenSell.Gif");NONAME5.SetAttrs("Bottom");
+				
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3,NONAME4,NONAME5},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "MB ortalama yukarı kesilince alınır. MS aşağı kesilince satılır.\n\n";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , C ,\"Sell.Gif\"),DRAWICON(BUY , C ,\"Buy.Gif\"),DRAWICON(STOPSELLS , C ,\"StopSell.Gif\"),DRAWICON(STOPBUYS , C ,\"StopBuy.Gif\"),DRAWICON(DSELL , C ,\"OpenSell.Gif\"),DRAWICON(DBUY, C ,\"CloseOpenSell.Gif\")";}
+			}
+		} //class A_ZIGAD
+
+		[System.Serializable]
+		public class _T_ZIGWAD:FormulaBase
+		{
+			public double SPR=0;
+			public double SL=0;
+			public _T_ZIGWAD():base()
+			{
+				AddParam("SPR","0.35","0.01","5","0.01","",FormulaParamType.Double);
+				AddParam("SL","0","0","100","0","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData AD=SUM(IF( CLOSE>REF(CLOSE,1),CLOSE-MIN(REF(CLOSE,1),LOW),IF(CLOSE<REF(CLOSE,1),
+CLOSE-MAX(REF(CLOSE,1),HIGH),0)),0); AD.Name="AD";
+				FormulaData SIG=EMPTY; SIG.Name="SIG";
+				FormulaData Z= ZIGP(AD,SPR,SIG); Z.Name="Z";
+				FormulaData BUY=SIG>1; BUY.Name="BUY";
+				FormulaData SELL=SIG<-1; SELL.Name="SELL";SELL.SetAttrs("ColorRed");
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData STOPLOSS=EMPTY; STOPLOSS.Name="STOPLOSS";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,BUY,SELL,0,0,BALANCE[0],0.000342,1,ALTBUY,ALTSELL,SL,STOPLOSS,0.0,TRUE); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(SELL , BT ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , BT ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData STOPBUYS= STOPLOSS>0; STOPBUYS.Name="STOPBUYS";
+				FormulaData STOPSELLS=STOPLOSS<0; STOPSELLS.Name="STOPSELLS";
+				FormulaData NONAME2=DRAWICON(STOPSELLS , BT ,"StopSell.Gif");NONAME2.SetAttrs("Top");
+				FormulaData NONAME3=DRAWICON(STOPBUYS , BT ,"StopBuy.Gif");NONAME3.SetAttrs("Bottom");
+				FormulaData MAXPERF= (BALANCE/LLV(L))*HHV(H); MAXPERF.Name="MaxPerf";
+				FormulaData NONAME4=BT;
+				FormulaData NONAME5=MAXPERF;NONAME5.SetAttrs(" DarkGreen,Width2");
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3,NONAME4,NONAME5},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "MB ortalama yukarı kesilince alınır. MS aşağı kesilince satılır.\n\n";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , BT ,\"Sell.Gif\"),DRAWICON(BUY , BT ,\"Buy.Gif\"),DRAWICON(STOPSELLS , BT ,\"StopSell.Gif\"),DRAWICON(STOPBUYS , BT ,\"StopBuy.Gif\"),BT,MaxPerf";}
+			}
+		} //class _T_ZIGWAD
+
+		[System.Serializable]
+		public class A_ZIGWAD:FormulaBase
+		{
+			public double SPR=0;
+			public double SL=0;
+			public A_ZIGWAD():base()
+			{
+				AddParam("SPR","0.35","0.01","5","0.01","",FormulaParamType.Double);
+				AddParam("SL","0","0","100","0","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData AD=SUM(IF( CLOSE>REF(CLOSE,1),CLOSE-MIN(REF(CLOSE,1),LOW),IF(CLOSE<REF(CLOSE,1),
+CLOSE-MAX(REF(CLOSE,1),HIGH),0)),0); AD.Name="AD";
+				FormulaData SIG=EMPTY; SIG.Name="SIG";
+				FormulaData Z= ZIGP(AD,SPR,SIG); Z.Name="Z";
+				FormulaData BUY=SIG>1; BUY.Name="BUY";
+				FormulaData SELL=SIG<-1; SELL.Name="SELL";SELL.SetAttrs("COLORSTICK");
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData STOPLOSS=EMPTY; STOPLOSS.Name="STOPLOSS";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,BUY,SELL,0,0,BALANCE[0],0.000342,1,ALTBUY,ALTSELL,SL,STOPLOSS,0.0,TRUE); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(SELL , C ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , C ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData STOPBUYS= STOPLOSS>0; STOPBUYS.Name="STOPBUYS";
+				FormulaData STOPSELLS=STOPLOSS<0; STOPSELLS.Name="STOPSELLS";
+				FormulaData NONAME2=DRAWICON(STOPSELLS , C ,"StopSell.Gif");NONAME2.SetAttrs("Top");
+				FormulaData NONAME3=DRAWICON(STOPBUYS , C ,"StopBuy.Gif");NONAME3.SetAttrs("Bottom");
+				FormulaData DSELL=SIG==-0.5; DSELL.Name="DSELL";
+				FormulaData DBUY= SIG==0.5; DBUY.Name="DBUY";
+				FormulaData NONAME4=DRAWICON(DSELL , C ,"OpenSell.Gif");NONAME4.SetAttrs("Top");
+				FormulaData NONAME5=DRAWICON(DBUY, C ,"CloseOpenSell.Gif");NONAME5.SetAttrs("Bottom");
+				
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3,NONAME4,NONAME5},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "MB ortalama yukarı kesilince alınır. MS aşağı kesilince satılır.\n\n";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , C ,\"Sell.Gif\"),DRAWICON(BUY , C ,\"Buy.Gif\"),DRAWICON(STOPSELLS , C ,\"StopSell.Gif\"),DRAWICON(STOPBUYS , C ,\"StopBuy.Gif\"),DRAWICON(DSELL , C ,\"OpenSell.Gif\"),DRAWICON(DBUY, C ,\"CloseOpenSell.Gif\")";}
+			}
+		} //class A_ZIGWAD
+
+		[System.Serializable]
+		public class _T_WADVSL:FormulaBase
+		{
+			public double N=0;
+			public double M=0;
+			public double SL=0;
+			public _T_WADVSL():base()
+			{
+				AddParam("N","20","10","400","5","",FormulaParamType.Double);
+				AddParam("M","1500","600","10000","50","",FormulaParamType.Double);
+				AddParam("SL","0","0","100","0","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData AD=SUM(IF( CLOSE>REF(CLOSE,1),CLOSE-MIN(REF(CLOSE,1),LOW),IF(CLOSE<REF(CLOSE,1),
+CLOSE-MAX(REF(CLOSE,1),HIGH),0)),0); AD.Name="AD";
+				FormulaData SIG=VOL/REPEAT > M; SIG.Name="SIG";
+				FormulaData LL=LLV(AD,N); LL.Name="LL";
+				FormulaData HH= HHV(AD,N); HH.Name="HH";
+				FormulaData BUYO= IF(SIG & AD==LL,1, 0); BUYO.Name="BUYO";
+				FormulaData SELLO= IF(SIG & AD==HH,-1,0); SELLO.Name="SELLO";
+				FormulaData BUYC= BUYO & AD==HH; BUYC.Name="BUYC";
+				FormulaData SELLC=SELLO & AD==LL; SELLC.Name="SELLC";
+				FormulaData BUY= BUYO; BUY.Name="BUY";
+				FormulaData SELL= SELLO | SELLC; SELL.Name="SELL";
+				FormulaData OPENSELL=SELLO; OPENSELL.Name="OPENSELL";
+				FormulaData CLOSEOPENSELL=BUYO | BUYC; CLOSEOPENSELL.Name="CloseOpenSell";
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData STOPLOSS=EMPTY; STOPLOSS.Name="STOPLOSS";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,BUY,SELL,OPENSELL,CLOSEOPENSELL,BALANCE[0],0.000342,1,ALTBUY,ALTSELL,SL,STOPLOSS); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(SELL , BT ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , BT ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData NONAME2=DRAWICON(OPENSELL , BT ,"OpenSell.Gif");NONAME2.SetAttrs("Top");
+				FormulaData NONAME3=DRAWICON(CLOSEOPENSELL, BT ,"CloseOpenSell.Gif");NONAME3.SetAttrs("Bottom");
+				FormulaData STOPBUYS= STOPLOSS>0; STOPBUYS.Name="STOPBUYS";
+				FormulaData STOPSELLS=STOPLOSS<0; STOPSELLS.Name="STOPSELLS";
+				FormulaData NONAME4=DRAWICON(STOPSELLS , BT ,"StopSell.Gif");NONAME4.SetAttrs("Top");
+				FormulaData NONAME5=DRAWICON(STOPBUYS , BT ,"StopBuy.Gif");NONAME5.SetAttrs("Bottom");
+				FormulaData MAXPERF= (BALANCE/LLV(L))*HHV(H); MAXPERF.Name="MaxPerf";
+				FormulaData NONAME6=BT;
+				FormulaData NONAME7=MAXPERF;NONAME7.SetAttrs(" DarkGreen,Width2");
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3,NONAME4,NONAME5,NONAME6,NONAME7},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "Williams Accumulation distirbution indicatörünün dip ve tepelerine denk gelen > 3000 miktarlı barlarda (H+L)/2 fiyatlı işlem girilir.\n\nBUY:=SIG>1;\nSELL:=SIG<-1,ColorRed;\nALTBUY:= EMPTY;\nALTSELL:=EMPTY;\nSTOPLOSS:=EMPTY;\nBALANCE := 10000.0;\nBT:= BACKTEST(C,BUY,SELL,0,0,BALANCE[0],0.000342,1,ALTBUY,ALTSELL,SL,STOPLOSS,0.00,true);\n\nDRAWICON(SELL , BT ,'Sell.Gif'),Top;\nDRAWICON(BUY , BT ,'Buy.Gif'),Bottom;\n\nSTOPBUYS:= STOPLOSS>0;\nSTOPSELLS:=STOPLOSS<0;\nDRAWICON(STOPSELLS , BT ,'StopSell.Gif'),Top;\nDRAWICON(STOPBUYS , BT ,'StopBuy.Gif'),Bottom;\n\n\nMaxPerf:= (BALANCE/LLV(L))*HHV(H);\nBT\n\n\n";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , BT ,\"Sell.Gif\"),DRAWICON(BUY , BT ,\"Buy.Gif\"),DRAWICON(OPENSELL , BT ,\"OpenSell.Gif\"),DRAWICON(CloseOpenSell, BT ,\"CloseOpenSell.Gif\"),DRAWICON(STOPSELLS , BT ,\"StopSell.Gif\"),DRAWICON(STOPBUYS , BT ,\"StopBuy.Gif\"),BT,MaxPerf";}
+			}
+		} //class _T_WADVSL
+
+		[System.Serializable]
+		public class A_WADVSL:FormulaBase
+		{
+			public double N=0;
+			public double M=0;
+			public double SL=0;
+			public A_WADVSL():base()
+			{
+				AddParam("N","20","10","1000","1","",FormulaParamType.Double);
+				AddParam("M","1500","300","10000","50","",FormulaParamType.Double);
+				AddParam("SL","0","0","100","0","",FormulaParamType.Double);
+			}
+		
+			public override FormulaPackage Run(IFormulaDataProvider DP)
+			{
+				this.DataProvider = DP;
+				FormulaData AD=SUM(IF( CLOSE>REF(CLOSE,1),CLOSE-MIN(REF(CLOSE,1),LOW),IF(CLOSE<REF(CLOSE,1),
+CLOSE-MAX(REF(CLOSE,1),HIGH),0)),0); AD.Name="AD";
+				FormulaData SIG=VOL/REPEAT > M; SIG.Name="SIG";
+				FormulaData LL=LLV(AD,N); LL.Name="LL";
+				FormulaData HH= HHV(AD,N); HH.Name="HH";
+				FormulaData BUYO= IF(SIG & AD==LL,1, 0); BUYO.Name="BUYO";
+				FormulaData SELLO= IF(SIG & AD==HH,-1,0); SELLO.Name="SELLO";
+				FormulaData BUYC= BUYO & AD==HH; BUYC.Name="BUYC";
+				FormulaData SELLC=SELLO & AD==LL; SELLC.Name="SELLC";
+				FormulaData BUY= BUYO; BUY.Name="BUY";
+				FormulaData SELL= SELLO | SELLC; SELL.Name="SELL";
+				FormulaData OPENSELL=SELLO; OPENSELL.Name="OPENSELL";
+				FormulaData CLOSEOPENSELL=BUYO | BUYC; CLOSEOPENSELL.Name="CloseOpenSell";
+				FormulaData ALTBUY= EMPTY; ALTBUY.Name="ALTBUY";
+				FormulaData ALTSELL=EMPTY; ALTSELL.Name="ALTSELL";
+				FormulaData STOPLOSS=EMPTY; STOPLOSS.Name="STOPLOSS";
+				FormulaData BALANCE= 10000.0; BALANCE.Name="BALANCE";
+				FormulaData BT= BACKTEST(C,BUY,SELL,OPENSELL,CLOSEOPENSELL,BALANCE[0],0.000342,1,ALTBUY,ALTSELL,SL,STOPLOSS); BT.Name="BT";
+				FormulaData NONAME0=DRAWICON(SELL , C ,"Sell.Gif");NONAME0.SetAttrs("Top");
+				FormulaData NONAME1=DRAWICON(BUY , C ,"Buy.Gif");NONAME1.SetAttrs("Bottom");
+				FormulaData NONAME2=DRAWICON(OPENSELL , C ,"OpenSell.Gif");NONAME2.SetAttrs("Top");
+				FormulaData NONAME3=DRAWICON(CLOSEOPENSELL, C ,"CloseOpenSell.Gif");NONAME3.SetAttrs("Bottom");
+				FormulaData STOPBUYS= STOPLOSS>0; STOPBUYS.Name="STOPBUYS";
+				FormulaData STOPSELLS=STOPLOSS<0; STOPSELLS.Name="STOPSELLS";
+				FormulaData NONAME4=DRAWICON(STOPSELLS , C ,"StopSell.Gif");NONAME4.SetAttrs("Top");
+				FormulaData NONAME5=DRAWICON(STOPBUYS , C ,"StopBuy.Gif");NONAME5.SetAttrs("Bottom");
+				
+				return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3,NONAME4,NONAME5},"");
+			}
+		
+			public override string LongName
+			{
+				get{return "";}
+			}
+		
+			public override string Description
+			{
+				get{return "Williams Accumulation distirbution indicatörünün dip ve tepelerine denk gelen > 3000 miktarlı barlarda (H+L)/2 fiyatlı işlem girilir.\n\nBUY:=SIG>1;\nSELL:=SIG<-1,ColorRed;\nALTBUY:= EMPTY;\nALTSELL:=EMPTY;\nSTOPLOSS:=EMPTY;\nBALANCE := 10000.0;\nBT:= BACKTEST(C,BUY,SELL,0,0,BALANCE[0],0.000342,1,ALTBUY,ALTSELL,SL,STOPLOSS,0.00,true);\n\nDRAWICON(SELL , BT ,'Sell.Gif'),Top;\nDRAWICON(BUY , BT ,'Buy.Gif'),Bottom;\n\nSTOPBUYS:= STOPLOSS>0;\nSTOPSELLS:=STOPLOSS<0;\nDRAWICON(STOPSELLS , BT ,'StopSell.Gif'),Top;\nDRAWICON(STOPBUYS , BT ,'StopBuy.Gif'),Bottom;\n\n\nMaxPerf:= (BALANCE/LLV(L))*HHV(H);\nBT\n\n\n";}
+			}
+			public override string OutputFields
+			{
+				get{return "DRAWICON(SELL , C ,\"Sell.Gif\"),DRAWICON(BUY , C ,\"Buy.Gif\"),DRAWICON(OPENSELL , C ,\"OpenSell.Gif\"),DRAWICON(CloseOpenSell, C ,\"CloseOpenSell.Gif\"),DRAWICON(STOPSELLS , C ,\"StopSell.Gif\"),DRAWICON(STOPBUYS , C ,\"StopBuy.Gif\")";}
+			}
+		} //class A_WADVSL
+
+	} // namespace Trading
+
+} // namespace FML

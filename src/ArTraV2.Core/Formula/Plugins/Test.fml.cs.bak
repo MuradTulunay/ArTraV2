@@ -1,0 +1,202 @@
+using ArTraV2.Core.Formula;
+
+
+
+namespace FML
+{
+	public class TestScan:FormulaBase
+	{
+		public double N=0;
+		public double M=0;
+		public TestScan():base()
+		{
+			AddParam("N","90","1","1000","1","",FormulaParamType.Double);
+			AddParam("M","20","1","100","1","",FormulaParamType.Double);
+		}
+	
+		public override FormulaPackage Run(IFormulaDataProvider DP)
+		{
+			this.DataProvider = DP;
+			FormulaData NONAME0=C<LLV(C,3) & MA(V,N)>50000 & BETWEEN(C,1,10) & ABS(C-FML(DP,"BB(M,M/10)[LOWER]"))<0.1;
+			return new FormulaPackage(new FormulaData[]{NONAME0},"");
+		}
+	
+		public override string LongName
+		{
+			get{return "";}
+		}
+	
+		public override string Description
+		{
+			get{return "";}
+		}
+		public override string OutputFields
+		{
+			get{return "C<LLV(C,3) & MA(V,N)>50000 & BETWEEN(C,1,10) & ABS(C-FML(DP,\"BB(M,M/10)[LOWER]\"))<0.1";}
+		}
+	} //class TestScan
+
+	public class TestOrgData:FormulaBase
+	{
+		public string FN="";
+		public double XN=0;
+		public TestOrgData():base()
+		{
+			AddParam("FN","Close","0","0","1","",FormulaParamType.String);
+			AddParam("XN","12","1","100","1","",FormulaParamType.Double);
+		}
+	
+		public override FormulaPackage Run(IFormulaDataProvider DP)
+		{
+			this.DataProvider = DP;
+			FormulaData MYIV=ORGDATA(FN); MYIV.Name="MYIV";MYIV.SetAttrs("HighQuality");
+			FormulaData IVC= SMA(MYIV,XN,1); IVC.Name="IVC";
+			return new FormulaPackage(new FormulaData[]{MYIV,IVC},"");
+		}
+	
+		public override string LongName
+		{
+			get{return "OrgData";}
+		}
+	
+		public override string Description
+		{
+			get{return "";}
+		}
+		public override string OutputFields
+		{
+			get{return "MYIV,IVC";}
+		}
+	} //class TestOrgData
+
+	public class TestPartColor:FormulaBase
+	{
+		public TestPartColor():base()
+		{
+		}
+	
+		public override FormulaPackage Run(IFormulaDataProvider DP)
+		{
+			this.DataProvider = DP;
+			FormulaData NONAME0=C;
+			FormulaData NONAME1=MA(C,20);NONAME1.SetAttrs("UpColorRed,DownColorGreen,Width2,HighQuality");
+			return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1},"");
+		}
+	
+		public override string LongName
+		{
+			get{return "Support up color and download of line";}
+		}
+	
+		public override string Description
+		{
+			get{return "";}
+		}
+		public override string OutputFields
+		{
+			get{return "C,MA(C,20)";}
+		}
+	} //class TestPartColor
+
+	public class TwoDiff:FormulaBase
+	{
+		public string SYMBOL2="";
+		public TwoDiff():base()
+		{
+			AddParam("Symbol2","GARAN","0","0","1","",FormulaParamType.String);
+		}
+	
+		public override FormulaPackage Run(IFormulaDataProvider DP)
+		{
+			this.DataProvider = DP;
+			FormulaData C1=FML(SYMBOL2,"C")-C; C1.Name="C1";
+			FormulaData H1=FML(SYMBOL2,"H")-H; H1.Name="H1";
+			FormulaData L1=FML(SYMBOL2,"L")-L; L1.Name="L1";
+			FormulaData O1=FML(SYMBOL2,"O")-O; O1.Name="O1";
+			FormulaData NONAME0=GETSTOCK(O1,C1,MAX(C1,O1,H1,L1),MIN(C1,O1,H1,L1));
+			
+			return new FormulaPackage(new FormulaData[]{NONAME0},"");
+		}
+	
+		public override string LongName
+		{
+			get{return "Difference of Two Symbol";}
+		}
+	
+		public override string Description
+		{
+			get{return "";}
+		}
+		public override string OutputFields
+		{
+			get{return "GETSTOCK(O1,C1,MAX(C1,O1,H1,L1),MIN(C1,O1,H1,L1))";}
+		}
+	} //class TwoDiff
+
+	public class CustomTrade:FormulaBase
+	{
+		public double N=0;
+		public CustomTrade():base()
+		{
+			AddParam("N","1","1","3","1","",FormulaParamType.Double);
+		}
+	
+		public override FormulaPackage Run(IFormulaDataProvider DP)
+		{
+			this.DataProvider = DP;
+			FormulaData M=ORGDATA("M"+N); M.Name="M";
+			FormulaData NONAME0=DRAWICON(M==1,L,"EnterLong.GIF");NONAME0.SetAttrs("BOTTOM");
+			FormulaData NONAME1=DRAWICON(M==2,H,"EnterShort.GIF");NONAME1.SetAttrs("GOP");
+			FormulaData NONAME2=DRAWICON(M==3,H,"ExitLong.GIF");NONAME2.SetAttrs("TOP");
+			FormulaData NONAME3=DRAWICON(M==4,L,"ExitShort.GIF");NONAME3.SetAttrs("BOTTOM");
+			SETTEXTVISIBLE(FALSE);
+			return new FormulaPackage(new FormulaData[]{NONAME0,NONAME1,NONAME2,NONAME3},"");
+		}
+	
+		public override string LongName
+		{
+			get{return "Trade sign from database";}
+		}
+	
+		public override string Description
+		{
+			get{return "Load EnterLong,EnterShort,ExitLong,ExitShort from database";}
+		}
+		public override string OutputFields
+		{
+			get{return "DrawIcon(M==1,L,\"EnterLong.GIF\"),DrawIcon(M==2,H,\"EnterShort.GIF\"),DrawIcon(M==3,H,\"ExitLong.GIF\"),DrawIcon(M==4,L,\"ExitShort.GIF\")";}
+		}
+	} //class CustomTrade
+
+	public class VolChange:FormulaBase
+	{
+		public double N=0;
+		public VolChange():base()
+		{
+			AddParam("N","50","1","1000","1","",FormulaParamType.Double);
+		}
+	
+		public override FormulaPackage Run(IFormulaDataProvider DP)
+		{
+			this.DataProvider = DP;
+			FormulaData NONAME0=V/MA(C,N)-1;NONAME0.SetAttrs("ColorRed");
+			SETNAME("Vol%Change");
+			return new FormulaPackage(new FormulaData[]{NONAME0},"");
+		}
+	
+		public override string LongName
+		{
+			get{return "Vol Change";}
+		}
+	
+		public override string Description
+		{
+			get{return "";}
+		}
+		public override string OutputFields
+		{
+			get{return "V/MA(C,N)-1";}
+		}
+	} //class VolChange
+
+} // namespace FML

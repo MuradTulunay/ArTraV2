@@ -14,7 +14,10 @@
       "Bash(rm:*)",
       "Bash(taskkill /F /IM ArTraV2.App.exe)",
       "Bash(tasklist)",
-      "Bash(taskkill /F /PID 21520)"
+      "Bash(taskkill /F /PID 21520)",
+      "Bash(wc -l \"/c/Users/Murad Tulunay/source/repos/ArTraNew/ArTra/Plugins\"/*.fml.cs)",
+      "Bash(ls -la \"/c/Users/Murad Tulunay/source/repos/ArTraNew/ArTra/Plugins/\"*.cs)",
+      "Bash(grep -oP '[^\\\\\\\\]+\\\\.fml\\\\.cs\\\\\\(\\\\d+')"
     ]
   }
 }

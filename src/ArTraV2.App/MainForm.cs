@@ -156,8 +156,25 @@ public partial class MainForm : Form
         _btnIndicators.ForeColor = Color.White;
         _btnIndicators.Click += (s, e) => OpenIndicatorSelector();
 
+        // Formula Editor button
+        var btnFormulaEditor = new Button
+        {
+            Text = "Formula Editor",
+            Width = 100,
+            Location = new Point(900, 7),
+            FlatStyle = FlatStyle.Flat,
+            BackColor = Color.FromArgb(42, 46, 57),
+            ForeColor = Color.White
+        };
+        btnFormulaEditor.Click += (s, e) =>
+        {
+            using var dlg = new FormulaEditorDialog();
+            dlg.ShowDialog(this);
+            _chartPanel.Invalidate();
+        };
+
         toolbar.Controls.AddRange([_cmbDataSource, _txtSymbol, _cmbCycle, _btnLoad,
-            _cmbRenderType, lblBot, _txtBotUrl, _btnBotConnect, _btnIndicators]);
+            _cmbRenderType, lblBot, _txtBotUrl, _btnBotConnect, _btnIndicators, btnFormulaEditor]);
 
         // Bot info panel
         _lblBotInfo = new Label
