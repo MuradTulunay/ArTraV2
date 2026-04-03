@@ -1,6 +1,7 @@
 using ArTraV2.Core.Chart;
 using ArTraV2.Core.Chart.Drawing;
 using ArTraV2.Core.DataProviders;
+using ArTraV2.Core.Formula;
 using ArTraV2.Core.Indicators;
 using ArTraV2.Core.Interfaces;
 using ArTraV2.Core.Models;
@@ -57,6 +58,9 @@ public partial class MainForm : Form
     public MainForm()
     {
         InitializeUI();
+        // Register built-in formula assembly so indicators are discoverable
+        ArTraV2.Core.Formula.FormulaBase.RegAssembly("BuiltIn",
+            typeof(ArTraV2.Core.Formula.FormulaBase).Assembly);
     }
 
     private void InitializeUI()
@@ -147,34 +151,17 @@ public partial class MainForm : Form
         _btnBotConnect.ForeColor = Color.White;
         _btnBotConnect.Click += async (s, e) => await ConnectToBot();
 
-        // Indicators button
+        // Indicators / Formula Editor — unified button
         _btnIndicators.Text = "Indicators";
-        _btnIndicators.Width = 80;
+        _btnIndicators.Width = 90;
         _btnIndicators.Location = new Point(810, 7);
         _btnIndicators.FlatStyle = FlatStyle.Flat;
         _btnIndicators.BackColor = Color.FromArgb(42, 46, 57);
         _btnIndicators.ForeColor = Color.White;
-        _btnIndicators.Click += (s, e) => OpenIndicatorSelector();
-
-        // Formula Editor button
-        var btnFormulaEditor = new Button
-        {
-            Text = "Formula Editor",
-            Width = 100,
-            Location = new Point(900, 7),
-            FlatStyle = FlatStyle.Flat,
-            BackColor = Color.FromArgb(42, 46, 57),
-            ForeColor = Color.White
-        };
-        btnFormulaEditor.Click += (s, e) =>
-        {
-            using var dlg = new FormulaEditorDialog();
-            dlg.ShowDialog(this);
-            _chartPanel.Invalidate();
-        };
+        _btnIndicators.Click += (s, e) => OpenFormulaEditor();
 
         toolbar.Controls.AddRange([_cmbDataSource, _txtSymbol, _cmbCycle, _btnLoad,
-            _cmbRenderType, lblBot, _txtBotUrl, _btnBotConnect, _btnIndicators, btnFormulaEditor]);
+            _cmbRenderType, lblBot, _txtBotUrl, _btnBotConnect, _btnIndicators]);
 
         // Bot info panel
         _lblBotInfo = new Label
@@ -355,13 +342,23 @@ public partial class MainForm : Form
 
     // --- Indicator Selector ---
 
-    private void OpenIndicatorSelector()
+    private void OpenFormulaEditor()
     {
-        using var dlg = new IndicatorSelectorDialog();
-        dlg.LoadActiveIndicators(_chart.ActiveIndicators);
-        if (dlg.ShowDialog(this) == DialogResult.OK)
+        using var dlg = new FormulaEditorDialog();
+        if (dlg.ShowDialog(this) == DialogResult.OK && dlg.SelectedFormulaName != null)
         {
-            _chart.ActiveIndicators = dlg.ActiveIndicators;
+            // User selected "Add to Chart" — add the formula as an indicator
+            var formula = FormulaBase.CreateByName(dlg.SelectedFormulaName);
+            if (formula != null)
+            {
+                var adapter = new FormulaIndicatorAdapter(formula);
+                _chart.ActiveIndicators.Add(adapter);
+                _chartPanel.Invalidate();
+            }
+        }
+        else
+        {
+            // Dialog closed normally — refresh chart in case formulas were compiled
             _chartPanel.Invalidate();
         }
     }
