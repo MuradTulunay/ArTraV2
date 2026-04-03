@@ -5,10 +5,23 @@ using ArTraV2.Core.Models;
 
 namespace ArTraV2.App;
 
+public class DoubleBufferedPanel : Panel
+{
+    public DoubleBufferedPanel()
+    {
+        SetStyle(
+            ControlStyles.AllPaintingInWmPaint |
+            ControlStyles.UserPaint |
+            ControlStyles.OptimizedDoubleBuffer,
+            true);
+        UpdateStyles();
+    }
+}
+
 public partial class MainForm : Form
 {
     private readonly ChartRenderer _chart = new();
-    private readonly Panel _chartPanel = new();
+    private readonly DoubleBufferedPanel _chartPanel = new();
     private readonly ComboBox _cmbDataSource = new();
     private readonly TextBox _txtSymbol = new();
     private readonly Button _btnLoad = new();
@@ -18,6 +31,7 @@ public partial class MainForm : Form
     private readonly ToolStripStatusLabel _lblStatus = new();
     private readonly ToolStripStatusLabel _lblBotStatus = new();
     private readonly ToolStripStatusLabel _lblPrice = new();
+    private readonly ToolStripStatusLabel _lblLive = new();
 
     // Murad-bot controls
     private readonly TextBox _txtBotUrl = new();
@@ -25,8 +39,11 @@ public partial class MainForm : Form
     private Label _lblBotInfo = new();
 
     private IDataProvider? _currentProvider;
+    private ILiveDataProvider? _liveProvider;
     private MuradBotProvider? _botProvider;
     private bool _isConnectedToBot;
+    private string _currentSymbol = "";
+    private DataCycle _currentCycle = DataCycle.Daily;
 
     public MainForm()
     {
@@ -154,11 +171,14 @@ public partial class MainForm : Form
         _lblBotStatus.Text = "";
         _lblBotStatus.ForeColor = Color.FromArgb(41, 98, 255);
 
+        _lblLive.Text = "";
+        _lblLive.ForeColor = Color.FromArgb(255, 152, 0);
+
         _lblPrice.Text = "";
         _lblPrice.ForeColor = Color.FromArgb(38, 166, 91);
 
         _statusStrip.BackColor = Color.FromArgb(30, 34, 45);
-        _statusStrip.Items.AddRange([_lblStatus, _lblBotStatus, _lblPrice]);
+        _statusStrip.Items.AddRange([_lblStatus, _lblLive, _lblBotStatus, _lblPrice]);
 
         Controls.Add(_chartPanel);
         Controls.Add(_lblBotInfo);
@@ -237,7 +257,11 @@ public partial class MainForm : Form
 
         try
         {
-            if (_currentProvider is IDisposable d) d.Dispose();
+            // Disconnect previous live stream
+            StopLiveStream();
+
+            if (_currentProvider is IDisposable d && _currentProvider != _botProvider)
+                d.Dispose();
             _currentProvider = null;
 
             var dataSource = _cmbDataSource.SelectedIndex;
@@ -257,11 +281,12 @@ public partial class MainForm : Form
                 };
             }
 
-            var cycle = GetSelectedCycle();
+            _currentCycle = GetSelectedCycle();
+            _currentSymbol = symbol;
             var endDate = DateTime.UtcNow;
-            var startDate = GetStartDate(cycle, endDate);
+            var startDate = GetStartDate(_currentCycle, endDate);
 
-            var bars = await _currentProvider.GetHistoricalDataAsync(symbol, cycle, startDate, endDate);
+            var bars = await _currentProvider.GetHistoricalDataAsync(symbol, _currentCycle, startDate, endDate);
 
             if (bars.Count == 0)
             {
@@ -277,6 +302,9 @@ public partial class MainForm : Form
             var last = bars[^1];
             _lblPrice.Text = $"  Last: {last.Close:N4}  ";
             _lblStatus.Text = $"{symbol} - {bars.Count:N0} bars loaded ({_currentProvider.Name})";
+
+            // Auto-start live stream for supported providers
+            await StartLiveStream();
         }
         catch (Exception ex)
         {
@@ -287,6 +315,139 @@ public partial class MainForm : Form
             _btnLoad.Enabled = true;
         }
     }
+
+    // --- Live Data Stream ---
+
+    private async Task StartLiveStream()
+    {
+        // Determine which live provider to use
+        if (_currentProvider is ILiveDataProvider liveProv)
+        {
+            _liveProvider = liveProv;
+        }
+        else if (_currentProvider is YahooFinanceProvider)
+        {
+            // Yahoo doesn't have WebSocket — no live stream
+            _lblLive.Text = "";
+            return;
+        }
+        else
+        {
+            return;
+        }
+
+        try
+        {
+            _liveProvider.OnLiveBar += OnLiveBarReceived;
+
+            var interval = CycleToWsInterval(_currentCycle);
+            await _liveProvider.ConnectAsync(_currentSymbol, interval);
+
+            _lblLive.Text = "  LIVE  ";
+            _lblLive.ForeColor = Color.FromArgb(38, 166, 91);
+            _lblStatus.Text += " | Live connected";
+        }
+        catch (Exception ex)
+        {
+            _lblLive.Text = "  LIVE OFF  ";
+            _lblLive.ForeColor = Color.FromArgb(231, 76, 60);
+            _lblStatus.Text += $" | Live failed: {ex.Message}";
+        }
+    }
+
+    private void StopLiveStream()
+    {
+        if (_liveProvider != null)
+        {
+            _liveProvider.OnLiveBar -= OnLiveBarReceived;
+            _liveProvider.Disconnect();
+            _liveProvider = null;
+        }
+        _lblLive.Text = "";
+    }
+
+    private void OnLiveBarReceived(BarData bar)
+    {
+        if (InvokeRequired)
+        {
+            BeginInvoke(() => OnLiveBarReceived(bar));
+            return;
+        }
+
+        UpdateLiveBar(bar);
+    }
+
+    private void UpdateLiveBar(BarData bar)
+    {
+        // Update price label with color based on direction
+        if (_chart.Data.Count > 0)
+        {
+            var prevClose = _chart.Data[^1].Close;
+            var isUp = bar.Close >= prevClose;
+            _lblPrice.ForeColor = isUp ? Color.FromArgb(38, 166, 91) : Color.FromArgb(231, 76, 60);
+        }
+        _lblPrice.Text = $"  {bar.Close:N4}  ";
+
+        if (_chart.Data.Count == 0) return;
+
+        // Determine if this bar belongs to the same candle or is a new one
+        var lastBar = _chart.Data[^1];
+        if (IsSameCandle(lastBar.Date, bar.Date, _currentCycle))
+        {
+            // Update current candle
+            _chart.Data[^1] = lastBar with
+            {
+                High = Math.Max(lastBar.High, bar.High),
+                Low = Math.Min(lastBar.Low, bar.Low),
+                Close = bar.Close,
+                Volume = bar.Volume > 0 ? bar.Volume : lastBar.Volume
+            };
+        }
+        else
+        {
+            // New candle
+            _chart.Data.Add(bar);
+            _chart.ShowLatest();
+        }
+
+        _chartPanel.Invalidate();
+    }
+
+    private static bool IsSameCandle(DateTime existing, DateTime incoming, DataCycle cycle)
+    {
+        return cycle.CycleBase switch
+        {
+            DataCycleBase.Minute => existing.Date == incoming.Date
+                && existing.Hour == incoming.Hour
+                && existing.Minute / cycle.Multiplier == incoming.Minute / cycle.Multiplier,
+            DataCycleBase.Hour => existing.Date == incoming.Date
+                && existing.Hour / cycle.Multiplier == incoming.Hour / cycle.Multiplier,
+            DataCycleBase.Day => existing.Date == incoming.Date,
+            DataCycleBase.Week => GetWeekNumber(existing) == GetWeekNumber(incoming)
+                && existing.Year == incoming.Year,
+            DataCycleBase.Month => existing.Year == incoming.Year
+                && existing.Month == incoming.Month,
+            _ => existing.Date == incoming.Date
+        };
+    }
+
+    private static int GetWeekNumber(DateTime dt)
+    {
+        return System.Globalization.CultureInfo.InvariantCulture.Calendar
+            .GetWeekOfYear(dt, System.Globalization.CalendarWeekRule.FirstFourDayWeek, DayOfWeek.Monday);
+    }
+
+    private static string CycleToWsInterval(DataCycle cycle) => cycle.CycleBase switch
+    {
+        DataCycleBase.Minute => $"{cycle.Multiplier}m",
+        DataCycleBase.Hour => $"{cycle.Multiplier}h",
+        DataCycleBase.Day => "1d",
+        DataCycleBase.Week => "1w",
+        DataCycleBase.Month => "1M",
+        _ => "1d"
+    };
+
+    // --- Bot Connection ---
 
     private async Task ConnectToBot()
     {
@@ -309,16 +470,6 @@ public partial class MainForm : Form
             _lblBotStatus.Text = "Connecting...";
             _botProvider = new MuradBotProvider(_txtBotUrl.Text.Trim());
 
-            _botProvider.OnLiveBar += bar =>
-            {
-                if (InvokeRequired)
-                {
-                    BeginInvoke(() => UpdateLiveBar(bar));
-                    return;
-                }
-                UpdateLiveBar(bar);
-            };
-
             // Test connection
             var status = await _botProvider.GetBotStatusAsync();
 
@@ -338,13 +489,10 @@ public partial class MainForm : Form
                 // Auto-select Murad Bot data source and load
                 _cmbDataSource.SelectedIndex = 2;
                 _txtSymbol.Text = status.Symbol ?? "ETHUSDT";
-
-                // Start live stream
-                await _botProvider.ConnectLiveStreamAsync(status.Symbol?.ToLower() ?? "ethusdt");
+                LoadData(); // This will auto-start live stream via MuradBotProvider
             }
             else
             {
-                // Bot dashboard not available, but provider can still fetch from Binance
                 _isConnectedToBot = true;
                 _btnBotConnect.Text = "Disconnect";
                 _btnBotConnect.BackColor = Color.FromArgb(231, 76, 60);
@@ -356,27 +504,6 @@ public partial class MainForm : Form
             _lblBotStatus.Text = $"Bot error: {ex.Message}";
             _botProvider?.Dispose();
             _botProvider = null;
-        }
-    }
-
-    private void UpdateLiveBar(BarData bar)
-    {
-        _lblPrice.Text = $"  Live: {bar.Close:N4}  ";
-        _lblPrice.ForeColor = Color.FromArgb(38, 166, 91);
-
-        if (_chart.Data.Count > 0)
-        {
-            var lastBar = _chart.Data[^1];
-            if (lastBar.Date.Date == bar.Date.Date && lastBar.Date.Hour == bar.Date.Hour)
-            {
-                _chart.Data[^1] = bar;
-            }
-            else
-            {
-                _chart.Data.Add(bar);
-            }
-            _chart.ShowLatest();
-            _chartPanel.Invalidate();
         }
     }
 
@@ -407,8 +534,9 @@ public partial class MainForm : Form
     {
         if (disposing)
         {
+            StopLiveStream();
             _botProvider?.Dispose();
-            if (_currentProvider is IDisposable d)
+            if (_currentProvider is IDisposable d && _currentProvider != _botProvider)
                 d.Dispose();
         }
         base.Dispose(disposing);

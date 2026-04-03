@@ -1,16 +1,22 @@
+using System.Net.WebSockets;
+using System.Text;
 using System.Text.Json;
 using ArTraV2.Core.Interfaces;
 using ArTraV2.Core.Models;
 
 namespace ArTraV2.Core.DataProviders;
 
-public class BinanceProvider : IDataProvider, IDisposable
+public class BinanceProvider : ILiveDataProvider, IDisposable
 {
     private readonly HttpClient _http;
+    private ClientWebSocket? _ws;
+    private CancellationTokenSource? _wsCts;
     private const string BaseUrl = "https://api.binance.com";
 
     public string Name => "Binance";
     public DataSource Source => DataSource.Binance;
+    public bool IsConnected => _ws?.State == WebSocketState.Open;
+    public event Action<BarData>? OnLiveBar;
 
     public BinanceProvider()
     {
@@ -87,6 +93,79 @@ public class BinanceProvider : IDataProvider, IDisposable
         return bars.LastOrDefault();
     }
 
+    // --- WebSocket Live Stream ---
+
+    public async Task ConnectAsync(string symbol, string interval, CancellationToken ct = default)
+    {
+        Disconnect();
+
+        _wsCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        _ws = new ClientWebSocket();
+
+        var stream = $"{symbol.ToLower()}@kline_{interval}";
+        var uri = new Uri($"wss://stream.binance.com:9443/ws/{stream}");
+
+        await _ws.ConnectAsync(uri, _wsCts.Token);
+        _ = Task.Run(() => ReceiveLoopAsync(_wsCts.Token), _wsCts.Token);
+    }
+
+    public void Disconnect()
+    {
+        _wsCts?.Cancel();
+        if (_ws is { State: WebSocketState.Open })
+        {
+            try { _ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None).Wait(2000); }
+            catch { /* ignore */ }
+        }
+        _ws?.Dispose();
+        _ws = null;
+        _wsCts?.Dispose();
+        _wsCts = null;
+    }
+
+    private async Task ReceiveLoopAsync(CancellationToken ct)
+    {
+        var buffer = new byte[4096];
+        var sb = new StringBuilder();
+
+        try
+        {
+            while (_ws?.State == WebSocketState.Open && !ct.IsCancellationRequested)
+            {
+                sb.Clear();
+                WebSocketReceiveResult result;
+                do
+                {
+                    result = await _ws.ReceiveAsync(buffer, ct);
+                    if (result.MessageType == WebSocketMessageType.Close) return;
+                    sb.Append(Encoding.UTF8.GetString(buffer, 0, result.Count));
+                } while (!result.EndOfMessage);
+
+                try
+                {
+                    using var doc = JsonDocument.Parse(sb.ToString());
+                    if (doc.RootElement.TryGetProperty("k", out var k))
+                    {
+                        var bar = new BarData
+                        {
+                            Date = DateTimeOffset.FromUnixTimeMilliseconds(k.GetProperty("t").GetInt64()).UtcDateTime,
+                            Open = double.Parse(k.GetProperty("o").GetString()!),
+                            High = double.Parse(k.GetProperty("h").GetString()!),
+                            Low = double.Parse(k.GetProperty("l").GetString()!),
+                            Close = double.Parse(k.GetProperty("c").GetString()!),
+                            Volume = double.Parse(k.GetProperty("v").GetString()!),
+                            AdjClose = double.Parse(k.GetProperty("c").GetString()!)
+                        };
+                        OnLiveBar?.Invoke(bar);
+                    }
+                }
+                catch { /* skip malformed */ }
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (WebSocketException) { }
+    }
+
     private static List<BarData> ParseKlines(string json)
     {
         var bars = new List<BarData>();
@@ -121,5 +200,9 @@ public class BinanceProvider : IDataProvider, IDisposable
         _ => "1d"
     };
 
-    public void Dispose() => _http.Dispose();
+    public void Dispose()
+    {
+        Disconnect();
+        _http.Dispose();
+    }
 }

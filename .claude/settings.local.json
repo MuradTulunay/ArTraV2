@@ -9,7 +9,10 @@
       "Bash(bot\" || ls -la \"C:\\\\Users\\\\Murad Tulunay\\\\source\\\\repos\\\\\")",
       "Bash(xargs grep:*)",
       "Bash(dotnet build:*)",
-      "Bash(gh repo:*)"
+      "Bash(gh repo:*)",
+      "Bash(ls *.sln*)",
+      "Bash(rm:*)",
+      "Bash(taskkill /F /IM ArTraV2.App.exe)"
     ]
   }
 }
