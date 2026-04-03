@@ -123,7 +123,7 @@ public partial class MainForm : Form
             Location = new Point(510, 10),
             AutoSize = true
         };
-        _txtBotUrl.Text = "http://localhost:8080";
+        _txtBotUrl.Text = "http://178.104.110.229:8081";
         _txtBotUrl.Width = 180;
         _txtBotUrl.Location = new Point(540, 8);
         _txtBotUrl.BorderStyle = BorderStyle.FixedSingle;
@@ -453,7 +453,7 @@ public partial class MainForm : Form
     {
         if (_isConnectedToBot)
         {
-            _botProvider?.DisconnectLiveStream();
+            _botProvider?.Disconnect();
             _botProvider?.Dispose();
             _botProvider = null;
             _isConnectedToBot = false;

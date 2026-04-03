@@ -10,12 +10,12 @@ namespace ArTraV2.Core.DataProviders;
 public class MuradBotProvider : ILiveDataProvider, IDisposable
 {
     private readonly HttpClient _http;
-    private readonly YahooFinanceProvider _yahoo = new();
     private ClientWebSocket? _ws;
     private CancellationTokenSource? _wsCts;
+    private string? _subscribedSymbol;
 
-    public string DashboardUrl { get; set; } = "http://localhost:8080";
-    public string WsUrl { get; set; } = "ws://localhost:8080/ws";
+    public string BaseUrl { get; set; } = "http://178.104.110.229:8081";
+    public string WsUrl => BaseUrl.Replace("http://", "ws://").Replace("https://", "wss://") + "/ws/bars";
     public string Name => "Murad Bot";
     public DataSource Source => DataSource.Binance;
     public bool IsConnected => _ws?.State == WebSocketState.Open;
@@ -24,191 +24,133 @@ public class MuradBotProvider : ILiveDataProvider, IDisposable
 
     public MuradBotProvider()
     {
-        _http = new HttpClient();
+        _http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
         _http.DefaultRequestHeaders.Add("User-Agent", "ArTraV2/1.0");
     }
 
-    public MuradBotProvider(string dashboardUrl) : this()
+    public MuradBotProvider(string baseUrl) : this()
     {
-        DashboardUrl = dashboardUrl;
-        WsUrl = dashboardUrl.Replace("http://", "ws://").Replace("https://", "wss://") + "/ws";
+        BaseUrl = baseUrl.TrimEnd('/');
     }
 
-    // --- Symbol Detection ---
-
-    private static bool IsCryptoSymbol(string symbol)
-    {
-        var upper = symbol.ToUpperInvariant();
-        return upper.EndsWith("USDT") || upper.EndsWith("BTC") || upper.EndsWith("ETH")
-            || upper.EndsWith("BUSD") || upper.EndsWith("BNB") || upper.EndsWith("USDC")
-            || upper.EndsWith("FDUSD") || upper.EndsWith("TRY");
-    }
-
-    private static bool IsBistSymbol(string symbol)
-    {
-        // Explicit .IS suffix or pure alphabetic (Turkish stock ticker)
-        if (symbol.EndsWith(".IS", StringComparison.OrdinalIgnoreCase)) return true;
-        if (symbol.EndsWith(".E", StringComparison.OrdinalIgnoreCase)) return true;
-        // Not crypto → assume BIST
-        return !IsCryptoSymbol(symbol);
-    }
-
-    private static string NormalizeBistSymbol(string symbol)
-    {
-        // Add .IS suffix if not present for Yahoo Finance
-        if (symbol.EndsWith(".IS", StringComparison.OrdinalIgnoreCase))
-            return symbol.ToUpper();
-        return symbol.ToUpper() + ".IS";
-    }
-
-    // --- IDataProvider ---
+    // --- Historical Data: GET /api/rt/bars?symbol=GARAN&tf=15m&n=500 ---
 
     public async Task<List<BarData>> GetHistoricalDataAsync(
         string symbol, DataCycle cycle, DateTime startDate, DateTime endDate,
         CancellationToken ct = default)
     {
-        if (IsBistSymbol(symbol))
-        {
-            // BIST → Yahoo Finance
-            var yahooSymbol = NormalizeBistSymbol(symbol);
-            return await _yahoo.GetHistoricalDataAsync(yahooSymbol, cycle, startDate, endDate, ct);
-        }
+        var tf = CycleToTf(cycle);
+        var botSymbol = NormalizeSymbolForBot(symbol);
 
-        // Crypto → try murad-bot dashboard first, then Binance direct
-        try
-        {
-            var interval = CycleToInterval(cycle);
-            var url = $"{DashboardUrl}/api/klines?symbol={symbol}&interval={interval}&limit=30000";
-            var response = await _http.GetAsync(url, ct);
+        // Calculate approximate bar count from date range
+        var barCount = EstimateBarCount(cycle, startDate, endDate);
+        barCount = Math.Min(barCount, 30000);
 
-            if (response.IsSuccessStatusCode)
-            {
-                var json = await response.Content.ReadAsStringAsync(ct);
-                return ParseDashboardKlines(json);
-            }
-        }
-        catch { /* Fall through to direct Binance */ }
+        // Fetch in chunks of 500 (API max)
+        var allBars = new List<BarData>();
+        var remaining = barCount;
 
-        return await FetchBinancePaginated(symbol, cycle, startDate, endDate, 30000, ct);
+        // First request — get latest N bars
+        var n = Math.Min(remaining, 500);
+        var url = $"{BaseUrl}/api/rt/bars?symbol={Uri.EscapeDataString(botSymbol)}&tf={tf}&n={n}";
+        var response = await _http.GetAsync(url, ct);
+        response.EnsureSuccessStatusCode();
+
+        var json = await response.Content.ReadAsStringAsync(ct);
+        var result = ParseBarsResponse(json);
+        allBars.AddRange(result.Bars);
+
+        // If forming bar exists, add it as the last bar
+        if (result.FormingBar != null)
+            allBars.Add(result.FormingBar);
+
+        return allBars;
     }
+
+    // --- Symbol Search: GET /api/v2/symbols ---
 
     public async Task<List<string>> SearchSymbolsAsync(string query, CancellationToken ct = default)
     {
-        var results = new List<string>();
-
-        // Search BIST via Yahoo
         try
         {
-            var yahooResults = await _yahoo.SearchSymbolsAsync(query + ".IS", ct);
-            results.AddRange(yahooResults.Where(s => s.EndsWith(".IS")).Take(10));
-        }
-        catch { }
+            var response = await _http.GetAsync($"{BaseUrl}/api/v2/symbols", ct);
+            response.EnsureSuccessStatusCode();
 
-        // Search Binance
-        try
-        {
-            var response = await _http.GetAsync("https://api.binance.com/api/v3/exchangeInfo", ct);
-            if (response.IsSuccessStatusCode)
+            var json = await response.Content.ReadAsStringAsync(ct);
+            using var doc = JsonDocument.Parse(json);
+
+            var results = new List<string>();
+            var upperQuery = query.ToUpperInvariant();
+
+            foreach (var item in doc.RootElement.EnumerateArray())
             {
-                var json = await response.Content.ReadAsStringAsync(ct);
-                using var doc = JsonDocument.Parse(json);
-                var upperQuery = query.ToUpperInvariant();
+                string? symbol = null;
 
-                foreach (var sym in doc.RootElement.GetProperty("symbols").EnumerateArray())
+                // Support both flat string array and object array
+                if (item.ValueKind == JsonValueKind.String)
                 {
-                    var symbol = sym.GetProperty("symbol").GetString()!;
-                    if (sym.GetProperty("status").GetString() == "TRADING" &&
-                        symbol.Contains(upperQuery, StringComparison.OrdinalIgnoreCase))
-                    {
-                        results.Add(symbol);
-                        if (results.Count >= 20) break;
-                    }
+                    symbol = item.GetString();
+                }
+                else if (item.TryGetProperty("symbol", out var symProp))
+                {
+                    symbol = symProp.GetString();
+                }
+
+                if (symbol != null && symbol.Contains(upperQuery, StringComparison.OrdinalIgnoreCase))
+                {
+                    results.Add(symbol);
+                    if (results.Count >= 30) break;
                 }
             }
-        }
-        catch { }
 
-        return results;
+            return results;
+        }
+        catch
+        {
+            return [];
+        }
     }
 
     public async Task<BarData?> GetLatestBarAsync(string symbol, CancellationToken ct = default)
     {
-        if (IsBistSymbol(symbol))
-        {
-            var yahooSymbol = NormalizeBistSymbol(symbol);
-            return await _yahoo.GetLatestBarAsync(yahooSymbol, ct);
-        }
+        var tf = "1D";
+        var botSymbol = NormalizeSymbolForBot(symbol);
+        var url = $"{BaseUrl}/api/rt/bars?symbol={Uri.EscapeDataString(botSymbol)}&tf={tf}&n=1";
 
-        // Crypto → try bot status first
         try
         {
-            var response = await _http.GetAsync($"{DashboardUrl}/api/status", ct);
-            if (response.IsSuccessStatusCode)
-            {
-                var json = await response.Content.ReadAsStringAsync(ct);
-                using var doc = JsonDocument.Parse(json);
-                if (doc.RootElement.TryGetProperty("last_price", out var price))
-                {
-                    return new BarData
-                    {
-                        Date = DateTime.UtcNow,
-                        Close = price.GetDouble(),
-                        Open = price.GetDouble(),
-                        High = price.GetDouble(),
-                        Low = price.GetDouble()
-                    };
-                }
-            }
-        }
-        catch { }
+            var response = await _http.GetAsync(url, ct);
+            response.EnsureSuccessStatusCode();
 
-        var url = $"https://api.binance.com/api/v3/klines?symbol={Uri.EscapeDataString(symbol)}&interval=1m&limit=1";
-        var resp = await _http.GetAsync(url, ct);
-        resp.EnsureSuccessStatusCode();
-        var klines = ParseBinanceKlines(await resp.Content.ReadAsStringAsync(ct));
-        return klines.LastOrDefault();
-    }
+            var json = await response.Content.ReadAsStringAsync(ct);
+            var result = ParseBarsResponse(json);
 
-    // --- ILiveDataProvider ---
-
-    private string? _subscribedSymbol;
-
-    public Task ConnectAsync(string symbol, string interval, CancellationToken ct = default)
-    {
-        _subscribedSymbol = symbol.ToUpperInvariant();
-        return ConnectLiveStreamAsync(symbol, interval, ct);
-    }
-
-    public void Disconnect() => DisconnectLiveStream();
-
-    // --- WebSocket Live Stream (BIST + Binance via murad-bot) ---
-
-    public async Task ConnectLiveStreamAsync(string symbol = "ethusdt", string interval = "1m", CancellationToken ct = default)
-    {
-        DisconnectLiveStream();
-        _wsCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-
-        // Try murad-bot dashboard WebSocket first (supports both BIST + Binance)
-        try
-        {
-            _ws = new ClientWebSocket();
-            await _ws.ConnectAsync(new Uri(WsUrl), _wsCts.Token);
-            _ = Task.Run(() => ReceiveLoopAsync(_wsCts.Token), _wsCts.Token);
-            return;
+            return result.FormingBar ?? result.Bars.LastOrDefault();
         }
         catch
         {
-            _ws?.Dispose();
+            return null;
         }
+    }
 
-        // Fallback: Binance WebSocket (crypto only)
-        if (IsCryptoSymbol(symbol))
-        {
-            _ws = new ClientWebSocket();
-            var binanceWs = $"wss://stream.binance.com:9443/ws/{symbol.ToLower()}@kline_{interval}";
-            await _ws.ConnectAsync(new Uri(binanceWs), _wsCts.Token);
-            _ = Task.Run(() => ReceiveLoopAsync(_wsCts.Token), _wsCts.Token);
-        }
+    // --- ILiveDataProvider: ws://host:port/ws/bars ---
+
+    public Task ConnectAsync(string symbol, string interval, CancellationToken ct = default)
+    {
+        _subscribedSymbol = NormalizeSymbolForBot(symbol).ToUpperInvariant();
+        return ConnectWebSocketAsync(ct);
+    }
+
+    public void Disconnect() => DisconnectWebSocket();
+
+    private async Task ConnectWebSocketAsync(CancellationToken ct)
+    {
+        DisconnectWebSocket();
+        _wsCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+
+        _ws = new ClientWebSocket();
+        await _ws.ConnectAsync(new Uri(WsUrl), _wsCts.Token);
+        _ = Task.Run(() => ReceiveLoopAsync(_wsCts.Token), _wsCts.Token);
     }
 
     private async Task ReceiveLoopAsync(CancellationToken ct)
@@ -233,24 +175,32 @@ public class MuradBotProvider : ILiveDataProvider, IDisposable
                     using var doc = JsonDocument.Parse(sb.ToString());
                     var root = doc.RootElement;
 
-                    // murad-bot unified bar format:
-                    // {"type":"bar","symbol":"THYAO.IS","exchange":"BIST","interval":"1d","data":{"t":...,"o":...,"h":...,"l":...,"c":...,"v":...}}
-                    if (root.TryGetProperty("type", out var type) && type.GetString() == "bar")
+                    // murad-bot bar format:
+                    // {"type":"bar","symbol":"GARAN","exchange":"BIST","interval":"15m",
+                    //  "data":{"t":1775226600,"o":131.0,"h":131.3,"l":130.8,"c":130.9,"v":1020262.0}}
+                    if (root.TryGetProperty("type", out var typeProp) && typeProp.GetString() == "bar")
                     {
                         var msgSymbol = root.GetProperty("symbol").GetString()?.ToUpperInvariant();
 
                         // Filter: only pass bars for the subscribed symbol
                         if (_subscribedSymbol != null && msgSymbol != null &&
-                            !msgSymbol.Equals(_subscribedSymbol, StringComparison.OrdinalIgnoreCase) &&
-                            !msgSymbol.Replace(".IS", "").Equals(_subscribedSymbol.Replace(".IS", ""), StringComparison.OrdinalIgnoreCase))
+                            !SymbolMatches(msgSymbol, _subscribedSymbol))
                         {
                             continue;
                         }
 
                         var data = root.GetProperty("data");
+                        var timestamp = data.GetProperty("t");
+
+                        // Timestamp can be seconds or milliseconds
+                        var tsValue = timestamp.GetInt64();
+                        var date = tsValue > 9_999_999_999
+                            ? DateTimeOffset.FromUnixTimeMilliseconds(tsValue).UtcDateTime
+                            : DateTimeOffset.FromUnixTimeSeconds(tsValue).UtcDateTime;
+
                         var bar = new BarData
                         {
-                            Date = DateTimeOffset.FromUnixTimeMilliseconds(data.GetProperty("t").GetInt64()).UtcDateTime,
+                            Date = date,
                             Open = data.GetProperty("o").GetDouble(),
                             High = data.GetProperty("h").GetDouble(),
                             Low = data.GetProperty("l").GetDouble(),
@@ -259,19 +209,22 @@ public class MuradBotProvider : ILiveDataProvider, IDisposable
                         };
                         OnLiveBar?.Invoke(bar);
                     }
-                    // Binance native kline format (fallback WS)
-                    else if (root.TryGetProperty("k", out var kline))
+                    // Also handle raw array format: [timestamp, o, h, l, c, v]
+                    // with symbol in a wrapper
+                    else if (root.TryGetProperty("symbol", out var symProp) &&
+                             root.TryGetProperty("bar", out var barArr) &&
+                             barArr.ValueKind == JsonValueKind.Array)
                     {
-                        var bar = new BarData
+                        var msgSymbol = symProp.GetString()?.ToUpperInvariant();
+                        if (_subscribedSymbol != null && msgSymbol != null &&
+                            !SymbolMatches(msgSymbol, _subscribedSymbol))
                         {
-                            Date = DateTimeOffset.FromUnixTimeMilliseconds(kline.GetProperty("t").GetInt64()).UtcDateTime,
-                            Open = double.Parse(kline.GetProperty("o").GetString()!, CultureInfo.InvariantCulture),
-                            High = double.Parse(kline.GetProperty("h").GetString()!, CultureInfo.InvariantCulture),
-                            Low = double.Parse(kline.GetProperty("l").GetString()!, CultureInfo.InvariantCulture),
-                            Close = double.Parse(kline.GetProperty("c").GetString()!, CultureInfo.InvariantCulture),
-                            Volume = double.Parse(kline.GetProperty("v").GetString()!, CultureInfo.InvariantCulture)
-                        };
-                        OnLiveBar?.Invoke(bar);
+                            continue;
+                        }
+
+                        var bar = ParseBarArray(barArr);
+                        if (bar != null)
+                            OnLiveBar?.Invoke(bar);
                     }
                 }
                 catch { /* Skip malformed messages */ }
@@ -281,25 +234,7 @@ public class MuradBotProvider : ILiveDataProvider, IDisposable
         catch (WebSocketException) { }
     }
 
-    // --- Bot Status ---
-
-    public async Task<MuradBotStatus?> GetBotStatusAsync(CancellationToken ct = default)
-    {
-        try
-        {
-            var response = await _http.GetAsync($"{DashboardUrl}/api/status", ct);
-            if (!response.IsSuccessStatusCode) return null;
-
-            var json = await response.Content.ReadAsStringAsync(ct);
-            return JsonSerializer.Deserialize<MuradBotStatus>(json, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
-        }
-        catch { return null; }
-    }
-
-    public void DisconnectLiveStream()
+    private void DisconnectWebSocket()
     {
         _wsCts?.Cancel();
         if (_ws is { State: WebSocketState.Open })
@@ -313,111 +248,125 @@ public class MuradBotProvider : ILiveDataProvider, IDisposable
         _wsCts = null;
     }
 
-    // --- Binance Paginated Fetch ---
+    // --- Bot Status ---
 
-    private async Task<List<BarData>> FetchBinancePaginated(
-        string symbol, DataCycle cycle, DateTime startDate, DateTime endDate,
-        int maxBars, CancellationToken ct)
+    public async Task<MuradBotStatus?> GetBotStatusAsync(CancellationToken ct = default)
     {
-        var interval = CycleToInterval(cycle);
-        var startMs = new DateTimeOffset(startDate).ToUnixTimeMilliseconds();
-        var endMs = new DateTimeOffset(endDate).ToUnixTimeMilliseconds();
-
-        var allBars = new List<BarData>();
-        var currentStart = startMs;
-
-        while (currentStart < endMs && allBars.Count < maxBars)
+        try
         {
-            var limit = Math.Min(1000, maxBars - allBars.Count);
-            var url = $"https://api.binance.com/api/v3/klines?symbol={Uri.EscapeDataString(symbol)}" +
-                      $"&interval={interval}&startTime={currentStart}&endTime={endMs}&limit={limit}";
-
-            var response = await _http.GetAsync(url, ct);
-            response.EnsureSuccessStatusCode();
+            var response = await _http.GetAsync($"{BaseUrl}/api/status", ct);
+            if (!response.IsSuccessStatusCode) return null;
 
             var json = await response.Content.ReadAsStringAsync(ct);
-            var batch = ParseBinanceKlines(json);
-
-            if (batch.Count == 0) break;
-
-            allBars.AddRange(batch);
-            currentStart = new DateTimeOffset(batch[^1].Date).ToUnixTimeMilliseconds() + 1;
-
-            if (batch.Count < limit) break;
-
-            await Task.Delay(100, ct);
+            return JsonSerializer.Deserialize<MuradBotStatus>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
         }
-
-        return allBars;
+        catch { return null; }
     }
 
     // --- Parsers ---
 
-    private static List<BarData> ParseDashboardKlines(string json)
+    private record BarsResult(List<BarData> Bars, BarData? FormingBar);
+
+    private static BarsResult ParseBarsResponse(string json)
     {
-        var bars = new List<BarData>();
         using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
 
-        foreach (var item in doc.RootElement.EnumerateArray())
-        {
-            bars.Add(new BarData
-            {
-                Date = item.TryGetProperty("timestamp", out var ts)
-                    ? DateTime.Parse(ts.GetString()!, CultureInfo.InvariantCulture)
-                    : DateTimeOffset.FromUnixTimeMilliseconds(item.GetProperty("t").GetInt64()).UtcDateTime,
-                Open = GetNum(item, "open", "o"),
-                High = GetNum(item, "high", "h"),
-                Low = GetNum(item, "low", "l"),
-                Close = GetNum(item, "close", "c"),
-                Volume = GetNum(item, "volume", "v")
-            });
-        }
-        return bars;
-    }
-
-    private static double GetNum(JsonElement el, string key1, string key2)
-    {
-        if (el.TryGetProperty(key1, out var v)) return v.GetDouble();
-        if (el.TryGetProperty(key2, out v)) return v.GetDouble();
-        return 0;
-    }
-
-    private static List<BarData> ParseBinanceKlines(string json)
-    {
         var bars = new List<BarData>();
-        using var doc = JsonDocument.Parse(json);
 
-        foreach (var kline in doc.RootElement.EnumerateArray())
+        // Parse "bars": [[timestamp, o, h, l, c, v], ...]
+        if (root.TryGetProperty("bars", out var barsArr))
         {
-            bars.Add(new BarData
+            foreach (var barArr in barsArr.EnumerateArray())
             {
-                Date = DateTimeOffset.FromUnixTimeMilliseconds(kline[0].GetInt64()).UtcDateTime,
-                Open = double.Parse(kline[1].GetString()!, CultureInfo.InvariantCulture),
-                High = double.Parse(kline[2].GetString()!, CultureInfo.InvariantCulture),
-                Low = double.Parse(kline[3].GetString()!, CultureInfo.InvariantCulture),
-                Close = double.Parse(kline[4].GetString()!, CultureInfo.InvariantCulture),
-                Volume = double.Parse(kline[5].GetString()!, CultureInfo.InvariantCulture),
-                AdjClose = double.Parse(kline[4].GetString()!, CultureInfo.InvariantCulture)
-            });
+                var bar = ParseBarArray(barArr);
+                if (bar != null)
+                    bars.Add(bar);
+            }
         }
-        return bars;
+
+        // Parse "forming": [timestamp, o, h, l, c, v] or null
+        BarData? formingBar = null;
+        if (root.TryGetProperty("forming", out var forming) &&
+            forming.ValueKind == JsonValueKind.Array)
+        {
+            formingBar = ParseBarArray(forming);
+        }
+
+        return new BarsResult(bars, formingBar);
     }
 
-    private static string CycleToInterval(DataCycle cycle) => cycle.CycleBase switch
+    private static BarData? ParseBarArray(JsonElement arr)
     {
-        DataCycleBase.Second => $"{cycle.Multiplier}s",
+        if (arr.GetArrayLength() < 6) return null;
+
+        var tsValue = arr[0].GetInt64();
+        var date = tsValue > 9_999_999_999
+            ? DateTimeOffset.FromUnixTimeMilliseconds(tsValue).UtcDateTime
+            : DateTimeOffset.FromUnixTimeSeconds(tsValue).UtcDateTime;
+
+        return new BarData
+        {
+            Date = date,
+            Open = arr[1].GetDouble(),
+            High = arr[2].GetDouble(),
+            Low = arr[3].GetDouble(),
+            Close = arr[4].GetDouble(),
+            Volume = arr[5].GetDouble()
+        };
+    }
+
+    // --- Helpers ---
+
+    private static bool SymbolMatches(string msgSymbol, string subscribed)
+    {
+        if (msgSymbol.Equals(subscribed, StringComparison.OrdinalIgnoreCase))
+            return true;
+        // GARAN matches GARAN.IS and vice versa
+        var clean1 = msgSymbol.Replace(".IS", "").Replace(".E", "");
+        var clean2 = subscribed.Replace(".IS", "").Replace(".E", "");
+        return clean1.Equals(clean2, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string NormalizeSymbolForBot(string symbol)
+    {
+        // Bot uses GARAN (no .IS suffix) for BIST
+        var upper = symbol.ToUpperInvariant();
+        if (upper.EndsWith(".IS")) return upper[..^3];
+        if (upper.EndsWith(".E")) return upper[..^2];
+        return upper;
+    }
+
+    private static string CycleToTf(DataCycle cycle) => cycle.CycleBase switch
+    {
         DataCycleBase.Minute => $"{cycle.Multiplier}m",
         DataCycleBase.Hour => $"{cycle.Multiplier}h",
-        DataCycleBase.Day => $"{cycle.Multiplier}d",
-        DataCycleBase.Week => $"{cycle.Multiplier}w",
-        DataCycleBase.Month => $"{cycle.Multiplier}M",
-        _ => "1d"
+        DataCycleBase.Day => "1D",
+        DataCycleBase.Week => "1W",
+        DataCycleBase.Month => "1M",
+        _ => "1D"
     };
+
+    private static int EstimateBarCount(DataCycle cycle, DateTime start, DateTime end)
+    {
+        var span = end - start;
+        return cycle.CycleBase switch
+        {
+            DataCycleBase.Minute => (int)(span.TotalMinutes / cycle.Multiplier),
+            DataCycleBase.Hour => (int)(span.TotalHours / cycle.Multiplier),
+            DataCycleBase.Day => (int)(span.TotalDays / cycle.Multiplier),
+            DataCycleBase.Week => (int)(span.TotalDays / 7 / cycle.Multiplier),
+            DataCycleBase.Month => (int)(span.TotalDays / 30 / cycle.Multiplier),
+            _ => 500
+        };
+    }
 
     public void Dispose()
     {
-        DisconnectLiveStream();
-        _yahoo.Dispose();
+        DisconnectWebSocket();
         _http.Dispose();
     }
 }
