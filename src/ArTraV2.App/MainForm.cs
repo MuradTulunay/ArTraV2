@@ -215,12 +215,9 @@ public partial class MainForm : Form
         _statusStrip.BackColor = Color.FromArgb(30, 34, 45);
         _statusStrip.Items.AddRange([_lblStatus, _lblLive, _lblBotStatus, _lblPrice]);
 
-        // Active indicators panel (right side)
-        _indicatorsPanel.Changed += () =>
-        {
-            _chart.ActiveIndicators = new List<IIndicator>(_indicatorsPanel.Indicators);
-            _chartPanel.Invalidate();
-        };
+        // Active indicators panel (right side) — shares same list reference as chart
+        _indicatorsPanel.Indicators = _chart.ActiveIndicators;
+        _indicatorsPanel.Changed += () => _chartPanel.Invalidate();
 
         Controls.Add(_chartPanel);
         Controls.Add(_indicatorsPanel);
@@ -361,7 +358,7 @@ public partial class MainForm : Form
             {
                 var adapter = new FormulaIndicatorAdapter(formula);
                 _chart.ActiveIndicators.Add(adapter);
-                _indicatorsPanel.Refresh(_chart.ActiveIndicators);
+                _indicatorsPanel.RefreshUI();
                 _chartPanel.Invalidate();
             }
         }

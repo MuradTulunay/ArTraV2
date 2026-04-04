@@ -11,26 +11,46 @@ namespace ArTraV2.Core.Formula;
 public class FormulaIndicatorAdapter : IIndicator
 {
     private readonly FormulaBase _formula;
+    private readonly IndicatorParameter[] _params;
 
     public string Name => _formula.LongName;
-    public string ShortName => _formula.GetType().Name;
-    public bool IsOverlay => _formula.IsMainView || IsOverlayByName(ShortName);
-    public double[] ReferenceLines => GetReferenceLines();
+    public string ShortName
+    {
+        get
+        {
+            var name = _formula.GetType().Name;
+            if (_params.Length > 0)
+            {
+                var vals = string.Join(",", _params.Select(p => p.Value.ToString("G")));
+                return $"{name}({vals})";
+            }
+            return name;
+        }
+    }
 
-    public IndicatorParameter[] Parameters =>
-        _formula.Params.Select(p => new IndicatorParameter(p.Name,
-            double.TryParse(p.DefaultValue, out var v) ? v : 0,
-            double.TryParse(p.MinValue, out var mn) ? mn : 0,
-            double.TryParse(p.MaxValue, out var mx) ? mx : 500)).ToArray();
+    public bool IsOverlay => _formula.IsMainView || IsOverlayByName(_formula.GetType().Name);
+    public double[] ReferenceLines => GetReferenceLines();
+    public IndicatorParameter[] Parameters => _params;
 
     public FormulaIndicatorAdapter(FormulaBase formula)
     {
         _formula = formula;
+
+        // Build mutable parameter list from formula params
+        _params = formula.Params.Select(p => new IndicatorParameter(
+            p.Name,
+            double.TryParse(p.DefaultValue, out var v) ? v : 0,
+            double.TryParse(p.MinValue, out var mn) ? mn : 0,
+            double.TryParse(p.MaxValue, out var mx) ? mx : 500
+        )).ToArray();
     }
 
     public List<IndicatorResult> Calculate(List<BarData> data)
     {
         if (data.Count == 0) return [];
+
+        // Sync parameters back to formula fields before calculation
+        SyncParamsToFormula();
 
         var dp = new BarDataProvider(data);
         _formula.DataProvider = dp;
@@ -48,6 +68,12 @@ public class FormulaIndicatorAdapter : IIndicator
                 var fd = package.DataArray[i];
                 if (fd?.Data == null) continue;
 
+                // Skip if all NaN
+                bool hasData = false;
+                for (int j = 0; j < fd.Data.Length; j++)
+                    if (!double.IsNaN(fd.Data[j])) { hasData = true; break; }
+                if (!hasData) continue;
+
                 var color = i < colors.Length ? colors[i] : GetDefaultColor(i);
                 var renderType = MapRenderType(fd);
 
@@ -61,9 +87,23 @@ public class FormulaIndicatorAdapter : IIndicator
 
             return results;
         }
-        catch
+        catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"Formula {_formula.GetType().Name} error: {ex.Message}");
             return [];
+        }
+    }
+
+    private void SyncParamsToFormula()
+    {
+        var type = _formula.GetType();
+        for (int i = 0; i < _params.Length && i < _formula.Params.Count; i++)
+        {
+            var field = type.GetField(_formula.Params[i].Name);
+            if (field != null && field.FieldType == typeof(double))
+            {
+                field.SetValue(_formula, _params[i].Value);
+            }
         }
     }
 
@@ -77,56 +117,58 @@ public class FormulaIndicatorAdapter : IIndicator
 
     private double[] GetReferenceLines()
     {
-        var name = ShortName.ToUpperInvariant();
-        if (name.Contains("RSI")) return [30, 70];
-        if (name.Contains("MACD") || name.Contains("VMACD")) return [0];
-        if (name.Contains("CCI")) return [-100, 100];
-        if (name.Contains("WR")) return [-20, -80];
-        if (name.Contains("STOCH") || name.Contains("STO")) return [20, 80];
+        var name = _formula.GetType().Name.ToUpperInvariant();
+        if (name.Contains("RSI") && !name.Contains("VRSI")) return [30, 70];
+        if (name is "MACD" or "VMACD") return [0];
+        if (name is "CCI") return [-100, 100];
+        if (name is "WR") return [-20, -80];
+        if (name.Contains("STO") || name is "SO" or "LWR") return [20, 80];
+        if (name is "MTM" or "ROC" or "BIAS" or "B3612" or "DBCD" or "DPO" or "SRDM") return [0];
+        if (name is "AD" or "MI" or "MICD" or "RC" or "RCCD" or "CMF") return [0];
+        if (name is "PSY") return [25, 75];
         return [];
     }
 
     private static bool IsOverlayByName(string name)
     {
         var upper = name.ToUpperInvariant();
-        return upper is "MA" or "MA4" or "EMA" or "EMA4" or "BOL" or "BBIBOLL"
-            or "ENV" or "SAR" or "ICHIMOKU" or "SR" or "MIKE" or "CDP"
-            or "MAIN" or "HL" or "COMPARESTOCK" or "HHLLV"
-            || upper.StartsWith("MA") && upper.Length <= 3;
+        return upper is "MA" or "MA4" or "EMA" or "EMA4" or "EXPMA"
+            or "BOL" or "BBIBOLL" or "BBWIDTH"
+            or "ENV" or "SAR" or "ICHIMOKU" or "T_ICHIMOKU"
+            or "SR" or "MIKE" or "CDP" or "HHLLV" or "HHV"
+            or "MAIN" or "HL" or "COMPARESTOCK" or "DOTLINE" or "OVERLAYV"
+            or "LINREGR" or "ZIGW" or "ZIGSR" or "ZIGICON"
+            or "BBI" or "DMA"
+            || (upper.StartsWith("MA") && upper.Length <= 4 && !upper.Contains("MACD"));
     }
 
     private Color[] GetColors()
     {
         return
         [
-            Color.FromArgb(41, 98, 255),     // Blue
-            Color.FromArgb(255, 152, 0),     // Orange
-            Color.FromArgb(156, 39, 176),    // Purple
-            Color.FromArgb(38, 166, 91),     // Green
-            Color.FromArgb(231, 76, 60),     // Red
-            Color.FromArgb(0, 188, 212),     // Cyan
-            Color.FromArgb(255, 235, 59),    // Yellow
-            Color.FromArgb(233, 30, 99),     // Pink
+            Color.FromArgb(41, 98, 255),
+            Color.FromArgb(255, 152, 0),
+            Color.FromArgb(156, 39, 176),
+            Color.FromArgb(38, 166, 91),
+            Color.FromArgb(231, 76, 60),
+            Color.FromArgb(0, 188, 212),
+            Color.FromArgb(255, 235, 59),
+            Color.FromArgb(233, 30, 99),
         ];
     }
 
     private static Color GetDefaultColor(int index)
     {
         var hue = (index * 137) % 360;
-        return ColorFromHSL(hue, 0.7, 0.6);
-    }
-
-    private static Color ColorFromHSL(double h, double s, double l)
-    {
-        double c = (1 - Math.Abs(2 * l - 1)) * s;
-        double x = c * (1 - Math.Abs(h / 60 % 2 - 1));
-        double m = l - c / 2;
+        double c = 0.7 * 0.8;
+        double x = c * (1 - Math.Abs(hue / 60.0 % 2 - 1));
+        double m = 0.6 - c / 2;
         double r, g, b;
-        if (h < 60) { r = c; g = x; b = 0; }
-        else if (h < 120) { r = x; g = c; b = 0; }
-        else if (h < 180) { r = 0; g = c; b = x; }
-        else if (h < 240) { r = 0; g = x; b = c; }
-        else if (h < 300) { r = x; g = 0; b = c; }
+        if (hue < 60) { r = c; g = x; b = 0; }
+        else if (hue < 120) { r = x; g = c; b = 0; }
+        else if (hue < 180) { r = 0; g = c; b = x; }
+        else if (hue < 240) { r = 0; g = x; b = c; }
+        else if (hue < 300) { r = x; g = 0; b = c; }
         else { r = c; g = 0; b = x; }
         return Color.FromArgb((int)((r + m) * 255), (int)((g + m) * 255), (int)((b + m) * 255));
     }
