@@ -72,10 +72,17 @@ public class FormulaData
     {
         int len = Math.Max(a.Length, b.Length);
         var result = new double[len];
+
+        // If one side is a single-value constant, broadcast it
+        bool aConst = a.Length == 1;
+        bool bConst = b.Length == 1;
+        double aVal = aConst ? a[0] : 0;
+        double bVal = bConst ? b[0] : 0;
+
         for (int i = 0; i < len; i++)
         {
-            var va = i < a.Length ? a[i] : double.NaN;
-            var vb = i < b.Length ? b[i] : double.NaN;
+            var va = aConst ? aVal : (i < a.Length ? a[i] : double.NaN);
+            var vb = bConst ? bVal : (i < b.Length ? b[i] : double.NaN);
             result[i] = (double.IsNaN(va) || double.IsNaN(vb)) ? double.NaN : op(va, vb);
         }
         return new FormulaData(result);
