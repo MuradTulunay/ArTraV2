@@ -47,6 +47,7 @@ public partial class MainForm : Form
     // Drawing & indicators
     private readonly DrawingManager _drawingManager = new();
     private readonly DrawingToolbar _drawingToolbar = new();
+    private readonly ActiveIndicatorsPanel _indicatorsPanel = new();
 
     private IDataProvider? _currentProvider;
     private ILiveDataProvider? _liveProvider;
@@ -214,7 +215,15 @@ public partial class MainForm : Form
         _statusStrip.BackColor = Color.FromArgb(30, 34, 45);
         _statusStrip.Items.AddRange([_lblStatus, _lblLive, _lblBotStatus, _lblPrice]);
 
+        // Active indicators panel (right side)
+        _indicatorsPanel.Changed += () =>
+        {
+            _chart.ActiveIndicators = new List<IIndicator>(_indicatorsPanel.Indicators);
+            _chartPanel.Invalidate();
+        };
+
         Controls.Add(_chartPanel);
+        Controls.Add(_indicatorsPanel);
         Controls.Add(_drawingToolbar);
         Controls.Add(_lblBotInfo);
         Controls.Add(toolbar);
@@ -258,7 +267,7 @@ public partial class MainForm : Form
     {
         _chart.CursorPosition = e.Location;
 
-        if (_drawingManager.IsDragging && _chart.Data.Count > 0)
+        if ((_drawingManager.IsDragging || _drawingManager.IsDrawing) && _chart.Data.Count > 0)
         {
             var barIndex = _chart.GetBarIndexAtX(_chartPanel.ClientRectangle, e.X);
             var pane = _chart.GetPaneAt(e.Y) ?? _chart.Layout.MainPane;
@@ -347,18 +356,17 @@ public partial class MainForm : Form
         using var dlg = new FormulaEditorDialog();
         if (dlg.ShowDialog(this) == DialogResult.OK && dlg.SelectedFormulaName != null)
         {
-            // User selected "Add to Chart" — add the formula as an indicator
             var formula = FormulaBase.CreateByName(dlg.SelectedFormulaName);
             if (formula != null)
             {
                 var adapter = new FormulaIndicatorAdapter(formula);
                 _chart.ActiveIndicators.Add(adapter);
+                _indicatorsPanel.Refresh(_chart.ActiveIndicators);
                 _chartPanel.Invalidate();
             }
         }
         else
         {
-            // Dialog closed normally — refresh chart in case formulas were compiled
             _chartPanel.Invalidate();
         }
     }

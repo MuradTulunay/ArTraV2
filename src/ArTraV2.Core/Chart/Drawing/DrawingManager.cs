@@ -10,6 +10,9 @@ public class DrawingManager
     public IDrawingObject? SelectedObject { get; set; }
     public IDrawingObject? ObjectBeingCreated { get; private set; }
 
+    // Preview: temporary anchor following the mouse during creation
+    private DrawingAnchor? _previewAnchor;
+
     private int _draggingAnchorIndex = -1;
     private bool _isDragging;
 
@@ -38,6 +41,7 @@ public class DrawingManager
             }
 
             ObjectBeingCreated.Anchors.Add(new DrawingAnchor(barIndex, price));
+            _previewAnchor = null;
 
             if (ObjectBeingCreated.IsComplete)
             {
@@ -50,10 +54,9 @@ public class DrawingManager
             return false;
         }
 
-        // Selection mode — try to select/drag existing objects
+        // Selection mode
         const float tolerance = 6f;
 
-        // First check anchor hit on selected object
         if (SelectedObject != null)
         {
             var anchorIdx = SelectedObject.HitTestAnchor(screenPos, tolerance, toScreen);
@@ -65,7 +68,6 @@ public class DrawingManager
             }
         }
 
-        // Try to select an object
         SelectedObject = null;
         for (int i = Objects.Count - 1; i >= 0; i--)
         {
@@ -84,6 +86,13 @@ public class DrawingManager
         if (_isDragging && SelectedObject != null && _draggingAnchorIndex >= 0)
         {
             SelectedObject.Anchors[_draggingAnchorIndex] = new DrawingAnchor(barIndex, price);
+        }
+
+        // Update preview anchor during object creation
+        if (ObjectBeingCreated != null && ObjectBeingCreated.Anchors.Count > 0 &&
+            ObjectBeingCreated.Anchors.Count < ObjectBeingCreated.RequiredAnchors)
+        {
+            _previewAnchor = new DrawingAnchor(barIndex, price);
         }
     }
 
@@ -106,6 +115,7 @@ public class DrawingManager
     {
         ObjectBeingCreated = null;
         ActiveTool = null;
+        _previewAnchor = null;
     }
 
     public void RenderAll(Graphics g, Func<DrawingAnchor, PointF> toScreen)
@@ -113,8 +123,21 @@ public class DrawingManager
         foreach (var obj in Objects)
             obj.Render(g, toScreen, obj == SelectedObject);
 
-        // Render in-progress object
-        ObjectBeingCreated?.Render(g, toScreen, true);
+        // Render in-progress object with preview
+        if (ObjectBeingCreated != null)
+        {
+            if (_previewAnchor != null && ObjectBeingCreated.Anchors.Count < ObjectBeingCreated.RequiredAnchors)
+            {
+                // Temporarily add preview anchor for rendering
+                ObjectBeingCreated.Anchors.Add(_previewAnchor);
+                ObjectBeingCreated.Render(g, toScreen, true);
+                ObjectBeingCreated.Anchors.RemoveAt(ObjectBeingCreated.Anchors.Count - 1);
+            }
+            else
+            {
+                ObjectBeingCreated.Render(g, toScreen, true);
+            }
+        }
     }
 
     public bool IsDrawing => ActiveTool.HasValue || ObjectBeingCreated != null;
